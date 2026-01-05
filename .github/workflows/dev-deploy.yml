@@ -196,7 +196,7 @@ jobs:
           target: "/tmp"
 
       - name: Deploy
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.4
         env:
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
           GEMINI_MODEL: gemini-3-flash-preview

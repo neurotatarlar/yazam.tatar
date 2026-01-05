@@ -25,7 +25,7 @@ jobs:
           target: "/tmp/gec-tt-init"
 
       - name: Run init
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.4
         with:
           host: ${{ secrets.DEV_HOST }}
           username: ${{ secrets.DEV_USER }}
