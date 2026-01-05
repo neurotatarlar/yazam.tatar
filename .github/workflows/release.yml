@@ -43,7 +43,7 @@ jobs:
           bash ../deploy/precompress_web.sh build/web
           tar -czf ../gec-tt-web.tar.gz -C build/web .
       - name: Upload web artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: web
           path: gec-tt-web.tar.gz
@@ -69,7 +69,7 @@ jobs:
           cp build/app/outputs/flutter-apk/app-debug.apk ../dist/gec-tt-android-debug.apk
           cp build/app/outputs/bundle/debug/app-debug.aab ../dist/gec-tt-android-debug.aab
       - name: Upload android artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: android
           path: dist/*
@@ -97,7 +97,7 @@ jobs:
           flutter build linux
           tar -czf ../gec-tt-linux.tar.gz -C build/linux/x64/release/bundle .
       - name: Upload linux artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: linux
           path: gec-tt-linux.tar.gz
@@ -122,7 +122,7 @@ jobs:
           powershell -Command "New-Item -ItemType Directory -Path ../dist -Force | Out-Null"
           powershell -Command "Compress-Archive -Path build/windows/runner/Release/* -DestinationPath ../dist/gec-tt-windows.zip"
       - name: Upload windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: windows
           path: dist/gec-tt-windows.zip
