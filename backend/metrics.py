@@ -1,3 +1,5 @@
+"""Prometheus metrics definitions and exporter helper."""
+
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 REQUESTS_TOTAL = Counter(
@@ -15,6 +17,7 @@ STREAM_DURATION = Histogram("gec_stream_duration_seconds", "Stream duration in s
 
 
 def render_metrics() -> bytes:
+    """Render current metric values in Prometheus text format."""
     return generate_latest()
 
 

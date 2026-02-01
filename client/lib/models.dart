@@ -1,9 +1,13 @@
+// Shared models used by the client app.
 import 'package:flutter/material.dart';
 
+/// Layout direction for the two-pane view.
 enum LayoutMode { horizontal, vertical }
 
+/// Which panel is expanded in split layouts.
 enum ExpandedPanel { none, original, corrected }
 
+/// Configuration loaded from assets/config.json.
 class AppConfig {
   const AppConfig({
     required this.baseUrl,
@@ -14,6 +18,7 @@ class AppConfig {
     required this.buildSha,
   });
 
+  /// Construct an AppConfig from JSON data.
   factory AppConfig.fromJson(Map<String, dynamic> json) {
     final identifiers = <String, String>{};
     final rawIdentifiers = json['appIdentifiers'];
@@ -42,6 +47,7 @@ class AppConfig {
   final String buildSha;
 }
 
+/// User-facing settings for the app.
 class Settings {
   const Settings({
     required this.themeMode,
@@ -52,6 +58,7 @@ class Settings {
     required this.layoutMode,
   });
 
+  /// Default settings used on first launch.
   const Settings.defaults()
     : themeMode = ThemeMode.system,
       fontScale = 1.0,
@@ -66,6 +73,7 @@ class Settings {
   final String language;
   final LayoutMode layoutMode;
 
+  /// Create a copy with the provided overrides.
   Settings copyWith({
     ThemeMode? themeMode,
     double? fontScale,
@@ -85,6 +93,7 @@ class Settings {
   }
 }
 
+/// Represents a single correction request/response.
 class HistoryItem {
   const HistoryItem({
     required this.id,
@@ -95,6 +104,7 @@ class HistoryItem {
     required this.requestId,
   });
 
+  /// Parse a history item from JSON.
   factory HistoryItem.fromJson(Map<String, dynamic> json) {
     return HistoryItem(
       id: json['id']?.toString() ?? '',
@@ -114,6 +124,7 @@ class HistoryItem {
   final int latencyMs;
   final String requestId;
 
+  /// Serialize a history item to JSON.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -126,6 +137,7 @@ class HistoryItem {
   }
 }
 
+/// Parsed server-sent event payload.
 class SseEvent {
   const SseEvent(this.event, this.data);
   final String event;

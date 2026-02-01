@@ -1,12 +1,16 @@
+"""Environment-backed configuration for the backend."""
+
 import os
 from dataclasses import dataclass, field
 
 
 def _get(name: str, default: str) -> str:
+    """Fetch a string environment variable with a default."""
     return os.getenv(name, default)
 
 
 def _get_int(name: str, default: int) -> int:
+    """Fetch an integer environment variable with a default."""
     try:
         return int(os.getenv(name, default))
     except (TypeError, ValueError):
@@ -14,12 +18,15 @@ def _get_int(name: str, default: int) -> int:
 
 
 def _get_list(name: str) -> list[str]:
+    """Fetch a comma-delimited list from the environment."""
     raw = os.getenv(name, "")
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
 @dataclass
 class Settings:
+    """Typed configuration loaded from environment variables."""
+
     port: int = field(default_factory=lambda: _get_int("PORT", 3000))
     service_name: str = field(default_factory=lambda: _get("SERVICE_NAME", "tatar-gec"))
     version: str = field(default_factory=lambda: _get("VERSION", "0.1.0"))
@@ -44,4 +51,5 @@ class Settings:
 
 
 def get_settings() -> Settings:
+    """Construct settings with current environment values."""
     return Settings()

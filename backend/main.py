@@ -1,3 +1,5 @@
+"""FastAPI entrypoint for the Tatar GEC service."""
+
 import asyncio
 import json
 import logging
@@ -31,6 +33,8 @@ load_dotenv()
 
 
 class AppState:
+    """Holds shared runtime state for the API process."""
+
     def __init__(self, settings: Settings):
         self.settings = settings
         self.adapter: ModelAdapter = build_adapter(settings)
@@ -54,6 +58,7 @@ class AppState:
 
 
 async def get_state() -> AppState:
+    """Return (and lazily initialize) the singleton application state."""
     if not hasattr(app.state, "app_state"):
         app.state.app_state = AppState(get_settings())
     return app.state.app_state
@@ -61,11 +66,13 @@ async def get_state() -> AppState:
 
 @app.get("/health")
 async def health():
+    """Simple liveness probe for load balancers."""
     return {"status": "ok"}
 
 
 @app.get("/version")
 async def version(state: AppState = Depends(get_state)):
+    """Return build metadata for the running service."""
     return {
         "service": state.settings.service_name,
         "version": state.settings.version,
@@ -75,6 +82,7 @@ async def version(state: AppState = Depends(get_state)):
 
 @app.get("/status")
 async def status(state: AppState = Depends(get_state)):
+    """Expose runtime counters and limits for diagnostics."""
     uptime = int(time.time() - state.started_at)
     return {
         "status": "ok",
@@ -101,11 +109,13 @@ async def status(state: AppState = Depends(get_state)):
 
 @app.get("/metrics")
 async def metrics():
+    """Expose Prometheus metrics in the expected content type."""
     return Response(render_metrics(), media_type=METRICS_CONTENT_TYPE)
 
 
 @app.post("/v1/correct")
 async def correct(request: Request, state: AppState = Depends(get_state)):
+    """Handle one-shot correction requests."""
     state.total_requests += 1
     started = time.time()
     try:
@@ -171,6 +181,7 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
 
 @app.post("/v1/correct/stream")
 async def correct_stream(request: Request, state: AppState = Depends(get_state)):
+    """Stream correction output as server-sent events."""
     state.total_requests += 1
     try:
         ensure_json_request(request)
@@ -206,6 +217,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
     outcome_recorded = False
 
     def record_stream_outcome(outcome: str):
+        """Emit stream completion metrics once per request."""
         nonlocal outcome_recorded
         if outcome_recorded:
             return
@@ -234,6 +246,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
             ) from err
 
     async def event_stream() -> AsyncGenerator[str, None]:
+        """Yield SSE frames while keeping metrics and cache in sync."""
         interval = state.settings.heartbeat_ms / 1000
         corrected = ""
         pending_delta = first_delta
@@ -298,12 +311,14 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
 
 
 def sse_event(event: str, data: dict[str, Any]) -> str:
+    """Format an SSE event payload."""
     import json
 
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
 def validate_text(text: str, max_chars: int):
+    """Reject empty or oversized text inputs."""
     if not text or not text.strip():
         raise HTTPException(status_code=400, detail={"error": "invalid_input", "message": "empty"})
     if len(text) > max_chars:
@@ -313,6 +328,7 @@ def validate_text(text: str, max_chars: int):
 
 
 def ensure_json_request(request: Request) -> None:
+    """Ensure the request uses application/json."""
     content_type = request.headers.get("content-type", "")
     media_type = content_type.split(";", 1)[0].strip().lower()
     if media_type != "application/json":
@@ -320,6 +336,7 @@ def ensure_json_request(request: Request) -> None:
 
 
 async def enforce_body_size(request: Request, max_bytes: int) -> None:
+    """Reject requests with bodies that exceed the configured limit."""
     length = request.headers.get("content-length")
     if length:
         try:
@@ -333,6 +350,7 @@ async def enforce_body_size(request: Request, max_bytes: int) -> None:
 
 
 async def parse_json_body(request: Request) -> dict[str, Any]:
+    """Parse a JSON object payload with helpful error messages."""
     try:
         payload = await request.json()
     except json.JSONDecodeError as err:
@@ -349,6 +367,7 @@ async def parse_json_body(request: Request) -> dict[str, Any]:
 
 
 def client_ip(request: Request) -> str:
+    """Resolve the client IP using proxy headers when present."""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()

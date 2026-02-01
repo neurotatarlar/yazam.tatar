@@ -4,14 +4,14 @@ Streaming grammar/spell correction prototype for Tatar (Cyrillic). Single-page U
 
 ## Prerequisites
 - Python 3.11+
-- Docker + Docker Compose (for prod-like runs)
+- Flutter SDK (for the client app)
 
 ## Quickstart (dev)
 1. `cp .env.example .env`
 2. `python3 -m venv .venv && source .venv/bin/activate`
 3. `make install`
 4. `make dev`
-5. Open http://localhost:3000
+5. Open http://localhost:8080 (Flutter web UI). Backend runs on http://localhost:3000.
 
 ## Deployment (dev VPS)
 See `deploy/README.md` for the GitHub Actions setup (manual init + auto deploy on `master`).
@@ -25,13 +25,13 @@ See `deploy/README.md` for the GitHub Actions setup (manual init + auto deploy o
   - `backend/cache.py` — small TTL cache to avoid duplicate calls
   - `backend/metrics.py` — Prometheus counters/gauges/histograms
 - `client/` — Flutter app (web + desktop + mobile)
-  - `client/lib/main.dart` — UI layout, panels, settings/history/report sheets
+  - `client/lib/main.dart` — UI layout, settings/history/report sheets
   - `client/lib/app_state.dart` — single source of truth (streaming, layout, settings, history)
   - `client/lib/backend_client.dart` — SSE client for `/v1/correct/stream`
   - `client/lib/models.dart` — data models + enums
   - `client/lib/i18n.dart` — translation loader
   - `client/lib/app_config.dart` — loads `assets/config.json`
-  - `client/lib/history_store.dart` — Hive-backed history
+  - `client/lib/history_store.dart` — SharedPreferences-backed history (with in-memory fallback)
   - `client/lib/settings_store.dart` — shared_preferences settings
   - `client/assets/config.json` — backend URL + app name + report links
   - `client/assets/i18n/*.json` — UI translations
@@ -41,17 +41,18 @@ See `deploy/README.md` for the GitHub Actions setup (manual init + auto deploy o
   - `requirements.txt`, `requirements-dev.txt` — backend deps
   - `pyproject.toml` — lint/type config for Python tools
   - `Makefile` — dev/lint/security helpers
-  - `Dockerfile`, `docker-compose.yml`, `Caddyfile` — container/proxy setup
+  - `deploy/nginx/`, `deploy/systemd/` — production server configs
   - `.githooks/` — pre-commit hook
 
 ## Scripts
 - `make dev` — run FastAPI via uvicorn (auto-reload)
-- `make test` — run backend tests (pytest)
+- `make test-backend` — run backend tests (pytest)
+- `make test-client` — run Flutter tests
+- `make test` — run backend + client tests
 - `make lint` — lint backend + client
 - `make security` — backend security checks (bandit + pip-audit)
 - `make check` — lint + security
 - `make hooks` — install git hooks from `.githooks`
-- `make docker-up` / `make docker-down` — run Compose stack (app + Caddy)
 - `make sse-test` — curl SSE stream sample
 
 ## API
@@ -70,7 +71,7 @@ Payload shape:
 Validation: rejects empty/whitespace-only text; enforces `MAX_CHARS`. Rate limits per minute/day plus max concurrent streams per IP.
 
 ## Client highlights (Flutter)
-- Responsive layout (desktop horizontal split, mobile vertical stack; manual layout toggles).
+- Responsive layout optimized for desktop and mobile widths.
 - i18n via `client/assets/i18n/*.json`; language choice saved locally.
 - Streaming UX with incremental output and auto-scroll during generation.
 - Local history sheet (desktop dialog, mobile bottom sheet) with clear/save toggles.
@@ -85,7 +86,7 @@ Validation: rejects empty/whitespace-only text; enforces `MAX_CHARS`. Rate limit
 - App identifiers in config are placeholders; native bundle IDs still live in platform folders.
 
 ## Configuration
-See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MODEL_BACKEND` supports `mock`, `prompt`, `local` adapters; swap without UI changes.
+See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MODEL_BACKEND` supports `gemini`, `mock`, `prompt`, `local` adapters; swap without UI changes.
 
 ## Dev tools
 - Backend lint/type/security: `requirements-dev.txt` (install via `make install-dev`).
@@ -94,9 +95,8 @@ See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MO
 - You can override Flutter/Dart binaries with `FLUTTER=/path/to/flutter DART=/path/to/dart make lint-client`.
 
 ## Deployment
-- Build image: `docker build -t gec-tt .`
-- Compose (prod-ish): `docker compose up -d`
-- Caddy reverse proxy included with buffering disabled for SSE; enable HTTPS/ACME by editing `Caddyfile` when deploying to a domain.
+- Systemd unit files live in `deploy/systemd/`.
+- Example Nginx configs (including SSE-friendly settings) live in `deploy/nginx/`.
 
 ## SEO plan (not implemented)
 - Keep the Flutter app at `/` (no extra steps for users).

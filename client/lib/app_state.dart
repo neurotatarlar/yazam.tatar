@@ -1,3 +1,4 @@
+// Central state manager for the Flutter client.
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -10,8 +11,10 @@ import 'i18n.dart';
 import 'models.dart';
 import 'settings_store.dart';
 
+/// Represents user feedback on a correction.
 enum FeedbackChoice { none, up, down }
 
+/// ChangeNotifier that coordinates UI state, history, and streaming.
 class AppState extends ChangeNotifier {
   AppState({
     required this.config,
@@ -62,9 +65,11 @@ class AppState extends ChangeNotifier {
 
   static const int historyPageSize = 6;
 
+  /// Translate a string key using the loaded locale.
   String t(String key, {Map<String, String> vars = const {}}) =>
       _localizer.t(key, vars: vars);
 
+  /// Switch the UI language and persist the selection.
   Future<void> setLanguage(String lang) async {
     await _localizer.load(lang);
     settings = settings.copyWith(language: lang);
@@ -72,6 +77,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Load persisted settings and translations on startup.
   Future<void> hydrate() async {
     if (!autoHydrate || _didHydrate || _isHydrating) {
       return;
@@ -85,7 +91,7 @@ class AppState extends ChangeNotifier {
       if (shouldLoadLocale) {
         await _localizer.load(loaded.language);
       }
-    } catch (_) {
+    } on Object catch (_) {
       // Keep defaults on startup failure.
     } finally {
       _didHydrate = true;
@@ -94,24 +100,28 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Replace settings and persist them.
   Future<void> updateSettings(Settings updated) async {
     settings = updated;
     await settingsStore.save(settings);
     notifyListeners();
   }
 
+  /// Update the layout mode and reset the split ratio.
   void setLayout(LayoutMode mode) {
     settings = settings.copyWith(layoutMode: mode);
-    settingsStore.save(settings);
+    unawaited(settingsStore.save(settings));
     resetSplit();
     notifyListeners();
   }
 
+  /// Update the split ratio used by split layouts.
   void setSplitRatio(double ratio) {
     splitRatio = ratio.clamp(0.2, 0.8);
     notifyListeners();
   }
 
+  /// Expand/collapse the requested panel.
   void toggleExpand(ExpandedPanel panel) {
     if (expandedPanel == panel) {
       expandedPanel = ExpandedPanel.none;
@@ -121,10 +131,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Reset split ratio to the default midpoint.
   void resetSplit() {
     splitRatio = 0.5;
   }
 
+  /// Update the input text and clear transient status.
   void updateOriginalText(String text) {
     originalText = text;
     if (statusText.isNotEmpty) {
@@ -134,11 +146,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Load a previous history entry into the composer.
   Future<void> loadHistoryItem(HistoryItem item) async {
     originalText = item.original;
     notifyListeners();
   }
 
+  /// Clear all persisted and in-memory history.
   Future<void> clearHistory() async {
     history = [];
     await historyStore.clear();
@@ -148,15 +162,18 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Look up feedback state for a given history item.
   FeedbackChoice feedbackForItem(HistoryItem item) {
     return _historyFeedback[item.id] ?? FeedbackChoice.none;
   }
 
+  /// Update feedback for the active response.
   void toggleActiveFeedback(FeedbackChoice choice) {
     activeFeedback = _toggleFeedback(activeFeedback, choice);
     notifyListeners();
   }
 
+  /// Update feedback state for a history item.
   void toggleHistoryFeedback(String id, FeedbackChoice choice) {
     final current = _historyFeedback[id] ?? FeedbackChoice.none;
     final next = _toggleFeedback(current, choice);
@@ -168,6 +185,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Stop the current stream and mark it as canceled.
   Future<void> stopStreaming() async {
     isStreaming = false;
     statusText = '';
@@ -177,6 +195,7 @@ class AppState extends ChangeNotifier {
     _subscription = null;
   }
 
+  /// Load the next page of history for infinite scrolling.
   Future<bool> loadMoreHistory() async {
     if (isHistoryLoading || !hasMoreHistory) {
       return false;
@@ -199,6 +218,7 @@ class AppState extends ChangeNotifier {
     return page.isNotEmpty;
   }
 
+  /// Submit the current input for correction.
   Future<void> submit() async {
     final text = originalText.trim();
     if (text.isEmpty) {
@@ -207,6 +227,7 @@ class AppState extends ChangeNotifier {
     await _startStream(text, resetTimestamp: true);
   }
 
+  /// Retry correction for the active text.
   Future<void> retry() async {
     final text = activeOriginal.trim();
     if (text.isEmpty) {
@@ -215,6 +236,7 @@ class AppState extends ChangeNotifier {
     await _startStream(text, resetTimestamp: false);
   }
 
+  /// Start a new streaming correction request.
   Future<void> _startStream(String text, {required bool resetTimestamp}) async {
     if (config.baseUrl.isEmpty) {
       await _subscription?.cancel();
@@ -247,6 +269,7 @@ class AppState extends ChangeNotifier {
         .listen(_handleEvent, onError: _handleError, onDone: _handleDone);
   }
 
+  /// Handle streamed SSE events from the backend.
   void _handleEvent(SseEvent event) {
     if (event.event == 'meta') {
       requestId = event.data['request_id']?.toString();
@@ -265,7 +288,7 @@ class AppState extends ChangeNotifier {
           ? rawLatency
           : int.tryParse(rawLatency?.toString() ?? '') ?? 0;
       wasCanceled = false;
-      _finishStream(latency: latency);
+      unawaited(_finishStream(latency: latency));
     }
     if (event.event == 'error') {
       errorMessage = event.data['message']?.toString() ?? t('errors.stream');
@@ -276,6 +299,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Handle transport-level stream errors.
   void _handleError(Object error) {
     errorMessage = error.toString();
     statusText = t('status.error');
@@ -284,13 +308,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Handle stream completion when no final event arrives.
   void _handleDone() {
     if (isStreaming) {
       wasCanceled = false;
-      _finishStream(latency: 0);
+      unawaited(_finishStream(latency: 0));
     }
   }
 
+  /// Finalize a stream and persist history.
   Future<void> _finishStream({required int latency}) async {
     isStreaming = false;
     statusText = '';
@@ -322,6 +348,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggle feedback between the selected choice and none.
   FeedbackChoice _toggleFeedback(FeedbackChoice current, FeedbackChoice next) {
     if (current == next) {
       return FeedbackChoice.none;
@@ -331,11 +358,15 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
-    _subscription?.cancel();
+    final subscription = _subscription;
+    if (subscription != null) {
+      unawaited(subscription.cancel());
+    }
     super.dispose();
   }
 }
 
+/// Load configuration and stores, then construct the app state.
 Future<AppState> bootstrapAppState() async {
   final config = await AppConfigLoader.load();
   final settingsStore = SettingsStore();

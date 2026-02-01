@@ -1,8 +1,10 @@
+// Persistence layer for user settings.
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models.dart';
 
+/// Stores user settings in SharedPreferences.
 class SettingsStore {
   static const _themeKey = 'theme_mode';
   static const _fontScaleKey = 'font_scale';
@@ -11,6 +13,7 @@ class SettingsStore {
   static const _languageKey = 'language';
   static const _layoutKey = 'layout_mode';
 
+  /// Load persisted settings, falling back to defaults.
   Future<Settings> load() async {
     final prefs = await SharedPreferences.getInstance();
     final theme = prefs.getString(_themeKey) ?? 'system';
@@ -32,6 +35,7 @@ class SettingsStore {
     );
   }
 
+  /// Persist the supplied settings values.
   Future<void> save(Settings settings) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_themeKey, _themeToString(settings.themeMode));
@@ -45,6 +49,7 @@ class SettingsStore {
     );
   }
 
+  /// Convert serialized theme strings into ThemeMode values.
   ThemeMode _themeFromString(String value) {
     if (value == 'light') {
       return ThemeMode.light;
@@ -55,6 +60,7 @@ class SettingsStore {
     return ThemeMode.system;
   }
 
+  /// Convert ThemeMode values into serialized strings.
   String _themeToString(ThemeMode mode) {
     return switch (mode) {
       ThemeMode.light => 'light',

@@ -1,3 +1,5 @@
+"""Gemini-backed model adapter and key management."""
+
 import asyncio
 import threading
 from collections.abc import AsyncGenerator, Awaitable, Callable
@@ -9,10 +11,14 @@ from .models import ModelAdapter
 
 
 class GeminiKeyExhausted(Exception):
+    """Raised when all configured Gemini API keys are exhausted."""
+
     pass
 
 
 class GeminiKeyPool:
+    """Round-robin key pool with exhaustion tracking."""
+
     def __init__(self, keys: list[str]):
         self._keys = [key.strip() for key in keys if key.strip()]
         self._exhausted: set[int] = set()
@@ -20,12 +26,15 @@ class GeminiKeyPool:
         self._lock = asyncio.Lock()
 
     def has_keys(self) -> bool:
+        """Return True if at least one key is configured."""
         return bool(self._keys)
 
     def key_count(self) -> int:
+        """Return the total number of configured keys."""
         return len(self._keys)
 
     async def pick_key(self) -> str:
+        """Pick the next available key or raise if all are exhausted."""
         async with self._lock:
             if not self._keys:
                 raise GeminiKeyExhausted("No Gemini API keys configured.")
@@ -45,6 +54,7 @@ class GeminiKeyPool:
             return self._keys[index]
 
     async def mark_exhausted(self, key: str) -> bool:
+        """Mark a key as exhausted, returning True if all keys are exhausted."""
         async with self._lock:
             try:
                 index = self._keys.index(key)
@@ -60,6 +70,7 @@ class GeminiKeyPool:
             return False
 
     def _next_available_index(self, start: int) -> int | None:
+        """Find the next non-exhausted key index."""
         if not self._keys:
             return None
         for offset in range(len(self._keys)):
@@ -70,6 +81,8 @@ class GeminiKeyPool:
 
 
 class GeminiAdapter(ModelAdapter):
+    """Model adapter that wraps the Google Gemini API."""
+
     name = "gemini"
 
     def __init__(self, keys: list[str], model: str):
@@ -78,6 +91,7 @@ class GeminiAdapter(ModelAdapter):
         self._configure_lock = threading.Lock()
 
     async def correct(self, text: str, lang: str, request_id: str) -> str:
+        """Return a corrected response using the first available key."""
         prompt = build_prompt(text, lang, request_id)
 
         async def call(key: str) -> str:
@@ -86,10 +100,12 @@ class GeminiAdapter(ModelAdapter):
         return await self._with_key(call)
 
     def correct_stream(self, text: str, lang: str, request_id: str) -> AsyncGenerator[str, None]:
+        """Stream corrections from Gemini using SSE-friendly chunks."""
         prompt = build_prompt(text, lang, request_id)
         return self._stream_with_key(prompt)
 
     async def _with_key(self, func: Callable[[str], Awaitable[str]]) -> str:
+        """Execute a request against the key pool with retries."""
         if not self._pool.has_keys():
             raise GeminiKeyExhausted("No Gemini API keys configured.")
         tried = 0
@@ -112,6 +128,7 @@ class GeminiAdapter(ModelAdapter):
         raise GeminiKeyExhausted("Gemini quota is exhausted for all keys. Please try again later.")
 
     async def _stream_with_key(self, prompt: str) -> AsyncGenerator[str, None]:
+        """Stream responses while rotating keys on quota errors."""
         if not self._pool.has_keys():
             raise GeminiKeyExhausted("No Gemini API keys configured.")
         tried = 0
@@ -152,6 +169,7 @@ class GeminiAdapter(ModelAdapter):
         raise GeminiKeyExhausted("Gemini quota is exhausted for all keys. Please try again later.")
 
     async def _stream_once(self, key: str, prompt: str) -> AsyncGenerator[str, None]:
+        """Bridge the blocking Gemini streaming API into an async generator."""
         queue: asyncio.Queue[object] = asyncio.Queue()
         loop = asyncio.get_running_loop()
 
@@ -192,6 +210,7 @@ class GeminiAdapter(ModelAdapter):
             yield item
 
     def _generate_text(self, key: str, prompt: str) -> str:
+        """Call the Gemini API once and return plain text."""
         model = self._build_model(key)
         response = model.generate_content(prompt)
         text = _extract_text(response)
@@ -200,12 +219,14 @@ class GeminiAdapter(ModelAdapter):
         raise RuntimeError("Gemini returned empty response.")
 
     def _build_model(self, key: str):
+        """Configure the SDK with the provided key and build a model."""
         with self._configure_lock:
             genai.configure(api_key=key)
             return genai.GenerativeModel(self._model)
 
 
 def build_prompt(text: str, lang: str, request_id: str) -> str:
+    """Create the instruction prompt for Gemini."""
     return (
         "You are a grammar and spelling correction assistant for Tatar text.\n"
         "Return only the corrected text. Do not add explanations or extra formatting.\n"
@@ -218,6 +239,7 @@ def build_prompt(text: str, lang: str, request_id: str) -> str:
 
 
 def _extract_text(response) -> str | None:
+    """Extract text from the various Gemini response shapes."""
     text = getattr(response, "text", None)
     if text:
         return text

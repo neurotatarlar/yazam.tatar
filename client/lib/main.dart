@@ -1,3 +1,5 @@
+// Main Flutter UI for the Tatar GEC client.
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -24,6 +26,7 @@ const _borderDark = Color(0xFF2C322D);
 const _originalDark = Color(0xFF1D201E);
 const _correctedDark = Color(0xFF1F2A23);
 
+/// Computes side padding that keeps content centered on wide screens.
 double _sidePadding(BuildContext context) {
   final width = MediaQuery.of(context).size.width;
   if (width <= 900) {
@@ -32,16 +35,19 @@ double _sidePadding(BuildContext context) {
   return (width - 900) / 2;
 }
 
+/// Keyboard intent to focus the composer input.
 class _FocusComposerIntent extends Intent {
   const _FocusComposerIntent();
 }
 
+/// App entry point that boots configuration and state.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final appState = await bootstrapAppState();
   runApp(MyApp(appState: appState));
 }
 
+/// Root widget that wires state, theming, and routing.
 class MyApp extends StatelessWidget {
   const MyApp({required this.appState, super.key});
 
@@ -78,6 +84,7 @@ class MyApp extends StatelessWidget {
     );
   }
 
+  /// Builds the light/dark theme palette from app settings.
   ThemeData _buildTheme(AppState state, Brightness brightness) {
     final base = ThemeData(
       brightness: brightness,
@@ -133,6 +140,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// Home screen that hosts the chat-style UI.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -140,6 +148,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+/// State controller for the home screen interactions.
 class _HomePageState extends State<HomePage> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _feedController = ScrollController();
@@ -154,10 +163,10 @@ class _HomePageState extends State<HomePage> {
     _feedController.addListener(_handleScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<AppState>().hydrate();
+        unawaited(context.read<AppState>().hydrate());
       }
       _scrollToBottom();
-      _fillHistoryToViewport();
+      unawaited(_fillHistoryToViewport());
       _focusComposer();
     });
     _inputFocusNode.addListener(_handleInputFocusChange);
@@ -228,6 +237,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Keep the text controller aligned with app state updates.
   void _syncInputController(AppState state) {
     if (_inputController.text != state.originalText) {
       _inputController.text = state.originalText;
@@ -237,6 +247,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Jump the feed list to the newest item.
   void _scrollToBottom() {
     if (!_feedController.hasClients) {
       return;
@@ -244,6 +255,7 @@ class _HomePageState extends State<HomePage> {
     _feedController.jumpTo(_feedController.position.minScrollExtent);
   }
 
+  /// Request focus for the input field when nothing else is focused.
   void _focusComposer() {
     if (_inputFocusNode.hasFocus) {
       return;
@@ -254,6 +266,7 @@ class _HomePageState extends State<HomePage> {
     _inputFocusNode.requestFocus();
   }
 
+  /// Load more history when the user approaches the end of the list.
   void _handleScroll() {
     if (!_feedController.hasClients) {
       return;
@@ -265,19 +278,22 @@ class _HomePageState extends State<HomePage> {
     if (position.pixels >= position.maxScrollExtent - 120) {
       final state = context.read<AppState>();
       if (!state.isHistoryLoading && state.hasMoreHistory) {
-        state.loadMoreHistory().then((loaded) {
-          if (loaded) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                _fillHistoryToViewport();
-              }
-            });
-          }
-        });
+        unawaited(
+          state.loadMoreHistory().then((loaded) {
+            if (loaded) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  unawaited(_fillHistoryToViewport());
+                }
+              });
+            }
+          }),
+        );
       }
     }
   }
 
+  /// Ensure enough history items exist to fill the visible area.
   Future<void> _fillHistoryToViewport() async {
     if (_isFillingHistory) {
       return;
@@ -310,16 +326,19 @@ class _HomePageState extends State<HomePage> {
     _isFillingHistory = false;
   }
 
+  /// Track pointer interactions to avoid fighting intentional blurs.
   void _handlePointerDown(PointerDownEvent event) {
     _lastInteraction = DateTime.now();
     _allowBlur = true;
   }
 
+  /// Mark that the user explicitly unfocused the composer.
   void _markIntentionalBlur() {
     _lastInteraction = DateTime.now();
     _allowBlur = true;
   }
 
+  /// Restore focus unless the user just interacted elsewhere.
   void _handleInputFocusChange() {
     if (_inputFocusNode.hasFocus) {
       _allowBlur = false;
@@ -335,6 +354,7 @@ class _HomePageState extends State<HomePage> {
     _restoreInputFocus();
   }
 
+  /// Re-focus the composer after a short delay.
   void _restoreInputFocus() {
     Future<void>.delayed(const Duration(milliseconds: 80), () {
       if (!mounted) {
@@ -348,6 +368,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+/// Header row with language selector and actions.
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.state, this.onLogoTap});
 
@@ -385,7 +406,7 @@ class _TopBar extends StatelessWidget {
             ],
             onChanged: (value) {
               if (value == null) return;
-              state.setLanguage(value);
+              unawaited(state.setLanguage(value));
               FocusManager.instance.primaryFocus?.unfocus();
             },
           ),
@@ -403,6 +424,7 @@ class _TopBar extends StatelessWidget {
     );
   }
 
+  /// Open history sheet dialog or bottom sheet depending on screen size.
   Future<void> _openHistory(BuildContext context, AppState state) async {
     await history_sheet.loadLibrary();
     if (!context.mounted) {
@@ -423,6 +445,7 @@ class _TopBar extends StatelessWidget {
     }
   }
 
+  /// Open settings sheet as a modal bottom sheet.
   Future<void> _openSettings(BuildContext context, AppState state) async {
     await settings_sheet.loadLibrary();
     if (!context.mounted) {
@@ -436,6 +459,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+/// Scrollable feed of current and historical corrections.
 class _FeedList extends StatelessWidget {
   const _FeedList({required this.state, required this.controller});
 
@@ -549,6 +573,7 @@ class _FeedList extends StatelessWidget {
   }
 }
 
+/// Placeholder content when no history exists.
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.state});
 
@@ -585,6 +610,7 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+/// App logo and title button.
 class _LogoButton extends StatelessWidget {
   const _LogoButton({required this.title, this.onTap});
 
@@ -639,6 +665,7 @@ class _LogoButton extends StatelessWidget {
   }
 }
 
+/// Inline error banner for failed requests.
 class _InlineError extends StatelessWidget {
   const _InlineError({required this.message});
 
@@ -663,6 +690,7 @@ class _InlineError extends StatelessWidget {
   }
 }
 
+/// One pair of user + assistant messages.
 class _ChatPair extends StatelessWidget {
   const _ChatPair({
     required this.original,
@@ -745,6 +773,7 @@ class _ChatPair extends StatelessWidget {
   }
 }
 
+/// Divider used between chat pairs.
 class _ChatDivider extends StatelessWidget {
   const _ChatDivider({required this.color});
 
@@ -765,6 +794,7 @@ class _ChatDivider extends StatelessWidget {
   }
 }
 
+/// Single chat bubble with metadata row.
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.text,
@@ -985,6 +1015,7 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
+/// Animated typing indicator for streaming responses.
 class _TypingIndicator extends StatefulWidget {
   const _TypingIndicator({required this.color});
 
@@ -994,6 +1025,7 @@ class _TypingIndicator extends StatefulWidget {
   State<_TypingIndicator> createState() => _TypingIndicatorState();
 }
 
+/// Lightweight toast used for clipboard feedback.
 class _CopyToast extends StatelessWidget {
   const _CopyToast({required this.message});
 
@@ -1034,6 +1066,7 @@ class _CopyToast extends StatelessWidget {
   }
 }
 
+/// Custom painter-based copy glyph used in the toolbar.
 class _CopyGlyph extends StatelessWidget {
   const _CopyGlyph({required this.color, required this.background});
 
@@ -1053,6 +1086,7 @@ class _CopyGlyph extends StatelessWidget {
   }
 }
 
+/// Draws the overlapping-square copy icon.
 class _CopyGlyphPainter extends CustomPainter {
   _CopyGlyphPainter(this.color, this.background);
 
@@ -1060,6 +1094,7 @@ class _CopyGlyphPainter extends CustomPainter {
   final Color background;
 
   @override
+  /// Paint the two overlapping rounded rectangles.
   void paint(Canvas canvas, Size size) {
     final stroke = Paint()
       ..color = color
@@ -1084,23 +1119,27 @@ class _CopyGlyphPainter extends CustomPainter {
   }
 
   @override
+  /// Repaint when colors change.
   bool shouldRepaint(covariant _CopyGlyphPainter oldDelegate) {
     return oldDelegate.color != color || oldDelegate.background != background;
   }
 }
 
+/// Animates the typing indicator dots.
 class _TypingIndicatorState extends State<_TypingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final List<Animation<double>> _dotAnimations;
 
   @override
+  /// Initialize the looping dot animations.
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..repeat();
+    );
+    unawaited(_controller.repeat());
     _dotAnimations = List.generate(3, (index) {
       final start = index * 0.2;
       final end = start + 0.6;
@@ -1112,12 +1151,14 @@ class _TypingIndicatorState extends State<_TypingIndicator>
   }
 
   @override
+  /// Dispose of the animation controller.
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
   @override
+  /// Build the animated dot row.
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1141,6 +1182,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
   }
 }
 
+/// Input row with composer and send/stop controls.
 class _Composer extends StatelessWidget {
   const _Composer({
     required this.state,
@@ -1180,7 +1222,7 @@ class _Composer extends StatelessWidget {
                     event.logicalKey == LogicalKeyboardKey.enter &&
                     !HardwareKeyboard.instance.isShiftPressed) {
                   if (canSend) {
-                    state.submit();
+                    unawaited(state.submit());
                   }
                   return KeyEventResult.handled;
                 }
@@ -1231,6 +1273,7 @@ class _Composer extends StatelessWidget {
   }
 }
 
+/// Footer area for transient status text.
 class _FooterActions extends StatelessWidget {
   const _FooterActions({required this.state});
 
@@ -1263,6 +1306,7 @@ class _FooterActions extends StatelessWidget {
   }
 }
 
+/// Copy text to clipboard and show a toast.
 Future<void> _copyToClipboard(
   BuildContext context,
   AppState state,
@@ -1274,7 +1318,7 @@ Future<void> _copyToClipboard(
       return;
     }
     _showCopyToast(context, state.t('actions.copied'));
-  } catch (_) {
+  } on Object catch (_) {
     if (!context.mounted) {
       return;
     }
@@ -1282,6 +1326,7 @@ Future<void> _copyToClipboard(
   }
 }
 
+/// Open the report problem sheet for the current request.
 Future<void> _openReportSheet(BuildContext context, AppState state) async {
   await report_sheet.loadLibrary();
   if (!context.mounted) {
@@ -1302,6 +1347,7 @@ Future<void> _openReportSheet(BuildContext context, AppState state) async {
   }
 }
 
+/// Format a timestamp as HH:mm.
 String _formatTimestamp(DateTime timestamp) {
   final local = timestamp.toLocal();
   final hour = local.hour.toString().padLeft(2, '0');
@@ -1309,6 +1355,7 @@ String _formatTimestamp(DateTime timestamp) {
   return '$hour:$minute';
 }
 
+/// Show a small toast above the tapped element.
 void _showCopyToast(BuildContext context, String message) {
   final overlay = Overlay.of(context);
   final renderBox = context.findRenderObject() as RenderBox?;

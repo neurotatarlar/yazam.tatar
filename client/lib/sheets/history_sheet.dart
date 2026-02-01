@@ -1,7 +1,11 @@
+// Sheet that lists saved history items.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 
+/// Scrollable history list for quick selection.
 class HistorySheet extends StatelessWidget {
   const HistorySheet({required this.state, super.key});
 
@@ -18,7 +22,7 @@ class HistorySheet extends StatelessWidget {
     return ListView.separated(
       shrinkWrap: true,
       itemCount: state.history.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final item = state.history[index];
         return ListTile(
@@ -29,8 +33,8 @@ class HistorySheet extends StatelessWidget {
           ),
           subtitle: Text(item.timestamp.toLocal().toString()),
           onTap: () {
-            state.loadHistoryItem(item);
-            Navigator.of(context).maybePop();
+            unawaited(state.loadHistoryItem(item));
+            unawaited(Navigator.of(context).maybePop());
           },
         );
       },

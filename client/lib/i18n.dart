@@ -1,12 +1,16 @@
+// Lightweight JSON-based localization helper.
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+/// Holds translated strings and performs token substitution.
 class Localizer {
   Map<String, String> _strings = {};
 
+  /// Exposes the raw translation map.
   Map<String, String> get strings => _strings;
 
+  /// Translate a key, replacing `{token}` placeholders.
   String t(String key, {Map<String, String> vars = const {}}) {
     var value = _strings[key] ?? key;
     vars.forEach((token, replacement) {
@@ -15,6 +19,7 @@ class Localizer {
     return value;
   }
 
+  /// Load translations for the given language code.
   Future<void> load(String lang) async {
     final path = 'assets/i18n/$lang.json';
     final raw = await rootBundle.loadString(path);

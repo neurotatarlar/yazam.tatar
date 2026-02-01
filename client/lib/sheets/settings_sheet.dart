@@ -1,7 +1,9 @@
+// Sheet that exposes user settings controls.
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 
+/// Settings sheet for theme, font size, and persistence controls.
 class SettingsSheet extends StatelessWidget {
   const SettingsSheet({required this.state, super.key});
 
@@ -55,6 +57,7 @@ class SettingsSheet extends StatelessWidget {
     );
   }
 
+  /// Confirm and clear history using a dialog.
   Future<void> _confirmClearHistory(
     BuildContext context,
     AppState state,
@@ -82,6 +85,7 @@ class SettingsSheet extends StatelessWidget {
   }
 }
 
+/// Theme selection UI.
 class _ThemeSelector extends StatelessWidget {
   const _ThemeSelector({required this.state});
 
@@ -125,6 +129,7 @@ class _ThemeSelector extends StatelessWidget {
   }
 }
 
+/// Font size selection UI.
 class _FontSizeSelector extends StatelessWidget {
   const _FontSizeSelector({required this.state});
 
@@ -165,6 +170,7 @@ class _FontSizeSelector extends StatelessWidget {
   }
 }
 
+/// Shorten a full git SHA to a readable snippet.
 String _shortSha(String sha) {
   if (sha.isEmpty) {
     return '';

@@ -1,3 +1,4 @@
+// HTTP client for the backend correction API.
 import 'dart:async';
 import 'dart:convert';
 
@@ -5,11 +6,13 @@ import 'package:http/http.dart' as http;
 
 import 'models.dart';
 
+/// Wraps streaming correction calls to the backend.
 class BackendClient {
   BackendClient(this.baseUrl);
 
   final String baseUrl;
 
+  /// Resolve a path against the configured base URL.
   Uri _endpoint(String path) {
     final base = Uri.parse(baseUrl);
     final basePath = base.path.endsWith('/')
@@ -19,6 +22,7 @@ class BackendClient {
     return base.replace(path: fullPath);
   }
 
+  /// Start a streaming correction request and emit SSE events.
   Stream<SseEvent> streamCorrect({
     required String text,
     required String lang,
@@ -87,7 +91,7 @@ class BackendClient {
                 },
                 onDone: () {
                   if (!controller.isClosed) {
-                    controller.close();
+                    unawaited(controller.close());
                   }
                 },
                 onError: (Object err, StackTrace stack) {
@@ -116,6 +120,7 @@ class BackendClient {
   }
 }
 
+/// Parse error messages from backend error payloads.
 String _extractErrorMessage(String body, int statusCode) {
   if (body.isNotEmpty) {
     try {
@@ -136,7 +141,7 @@ String _extractErrorMessage(String body, int statusCode) {
           return detail;
         }
       }
-    } catch (_) {}
+    } on Object catch (_) {}
   }
   return 'stream_failed:$statusCode';
 }

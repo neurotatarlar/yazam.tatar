@@ -1,8 +1,10 @@
+// Sheet that gathers report details and launches contact options.
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 
+/// Report problem sheet for the active correction.
 class ReportSheet extends StatefulWidget {
   const ReportSheet({required this.state, super.key});
 
@@ -101,16 +103,19 @@ class _ReportSheetState extends State<ReportSheet> {
     );
   }
 
+  /// Launch the mail client with a prefilled report.
   Future<void> _launchEmail(BuildContext context) async {
     final uri = _buildEmailUri();
     await _launchExternal(context, uri);
   }
 
+  /// Launch Telegram using the configured URL.
   Future<void> _launchTelegram(BuildContext context) async {
     final uri = Uri.parse(widget.state.config.reportTelegramUrl);
     await _launchExternal(context, uri);
   }
 
+  /// Build the mailto URI with request metadata.
   Uri _buildEmailUri() {
     final requestId = widget.state.requestId?.isNotEmpty ?? false
         ? widget.state.requestId!
@@ -147,6 +152,7 @@ class _ReportSheetState extends State<ReportSheet> {
     );
   }
 
+  /// Open a link in an external application.
   Future<void> _launchExternal(BuildContext context, Uri uri) async {
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
