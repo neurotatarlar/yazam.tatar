@@ -1,4 +1,7 @@
-// Sheet that gathers report details and launches contact options.
+// Bottom-sheet flow for reporting correction issues.
+//
+// Builds report payloads from active request metadata and opens
+// external contact channels (email or Telegram) from one place.
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 

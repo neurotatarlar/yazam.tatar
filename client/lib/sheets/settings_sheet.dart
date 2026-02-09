@@ -1,4 +1,4 @@
-// Sheet that exposes user settings controls.
+// Bottom-sheet UI for user settings controls.
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';

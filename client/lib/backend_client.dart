@@ -1,4 +1,4 @@
-// HTTP client for the backend correction API.
+// HTTP client for one-way streaming correction calls.
 import 'dart:async';
 import 'dart:convert';
 

@@ -1,4 +1,4 @@
-"""Sliding-window in-memory rate limiter."""
+"""In-memory sliding-window limiter for minute/day quotas."""
 
 import time
 

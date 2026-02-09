@@ -1,4 +1,7 @@
-// Persistence layer for correction history.
+// History persistence with local fallback and pruning rules.
+//
+// Keeps saved corrections within item-count and encoded-size limits,
+// and serves paged reads from newest to oldest for infinite scrolling.
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';

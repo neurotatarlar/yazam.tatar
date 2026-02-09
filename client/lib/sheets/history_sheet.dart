@@ -1,4 +1,4 @@
-// Sheet that lists saved history items.
+// Bottom sheet that lists saved history entries.
 import 'dart:async';
 
 import 'package:flutter/material.dart';

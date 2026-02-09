@@ -1,4 +1,9 @@
-"""FastAPI entrypoint for the Tatar GEC service."""
+"""FastAPI entrypoint for the Tatar GEC backend.
+
+The module initializes shared runtime state, exposes health and metrics
+routes, and implements both one-shot and SSE streaming correction APIs
+with validation, rate limiting, caching, and error mapping.
+"""
 
 import asyncio
 import json

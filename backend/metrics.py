@@ -1,4 +1,4 @@
-"""Prometheus metrics definitions and exporter helper."""
+"""Prometheus metric definitions and export helper."""
 
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 

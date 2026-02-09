@@ -1,4 +1,4 @@
-"""Simple in-memory cache with TTL eviction."""
+"""Tiny in-memory cache with time-based eviction."""
 
 import time
 

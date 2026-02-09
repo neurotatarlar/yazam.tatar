@@ -1,4 +1,7 @@
-// Main Flutter UI for the Tatar GEC client.
+// Flutter app entrypoint and primary chat-style UI.
+//
+// This module wires theming, keyboard shortcuts, split-panel behavior,
+// and deferred loading of bottom-sheet tools used by the home screen.
 import 'dart:async';
 import 'dart:math' as math;
 

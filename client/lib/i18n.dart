@@ -1,4 +1,4 @@
-// Lightweight JSON-based localization helper.
+// Lightweight JSON localization loader and token replacer.
 import 'dart:convert';
 
 import 'package:flutter/services.dart';

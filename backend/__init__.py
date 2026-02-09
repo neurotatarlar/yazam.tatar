@@ -1,1 +1,1 @@
-"""Backend package for deployment."""
+"""Backend package for the Tatar GEC service."""

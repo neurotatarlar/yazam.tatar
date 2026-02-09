@@ -1,4 +1,4 @@
-// Shared models used by the client app.
+// Shared data models and enums used by the Flutter client.
 import 'package:flutter/material.dart';
 
 /// Layout direction for the two-pane view.

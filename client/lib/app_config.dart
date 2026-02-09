@@ -1,4 +1,4 @@
-// Loads app configuration from bundled assets.
+// Loads app configuration from bundled JSON assets.
 import 'dart:convert';
 
 import 'package:flutter/services.dart';

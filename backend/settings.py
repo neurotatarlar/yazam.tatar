@@ -1,4 +1,4 @@
-"""Environment-backed configuration for the backend."""
+"""Environment-driven configuration for backend runtime defaults."""
 
 import os
 from dataclasses import dataclass, field

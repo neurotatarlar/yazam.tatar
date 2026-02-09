@@ -1,4 +1,4 @@
-// Persistence layer for user settings.
+// Persists user settings to local storage.
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

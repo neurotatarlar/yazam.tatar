@@ -1,4 +1,9 @@
-"""Gemini-backed model adapter and key management."""
+"""Gemini adapter with resilient key-pool request execution.
+
+This module wraps blocking Gemini SDK calls behind async interfaces,
+handles key rotation on quota errors, and supports both full-response
+and streaming correction flows.
+"""
 
 import asyncio
 import threading

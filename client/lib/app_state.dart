@@ -1,4 +1,7 @@
-// Central state manager for the Flutter client.
+// Central application state and interaction orchestration.
+//
+// Coordinates settings hydration, request streaming, history paging,
+// feedback state, and view-level status updates for the client UI.
 import 'dart:async';
 import 'dart:math' as math;
 

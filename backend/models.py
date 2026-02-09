@@ -1,4 +1,4 @@
-"""Model adapter interfaces and helpers."""
+"""Adapter contracts and text utilities for correction backends."""
 
 import asyncio
 import hashlib
