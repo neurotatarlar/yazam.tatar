@@ -64,7 +64,7 @@ void main() {
         });
   });
 
-  testWidgets('Feed renders history card', (WidgetTester tester) async {
+  testWidgets('Feed renders history card', (tester) async {
     final history = [
       HistoryItem(
         id: '1',
@@ -83,9 +83,7 @@ void main() {
     expect(find.text('fixed'), findsOneWidget);
   });
 
-  testWidgets('Send button streams corrected text', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('Send button streams corrected text', (tester) async {
     final stream = Stream<SseEvent>.fromIterable([
       const SseEvent('meta', {'request_id': 'rid', 'model_backend': 'mock'}),
       const SseEvent('delta', {'text': 'he'}),
@@ -105,7 +103,7 @@ void main() {
     expect(find.text('hello'), findsWidgets);
   });
 
-  testWidgets('Offline view shows error', (WidgetTester tester) async {
+  testWidgets('Offline view shows error', (tester) async {
     final state = _buildState(baseUrl: '');
 
     await tester.pumpWidget(MyApp(appState: state));
@@ -117,7 +115,7 @@ void main() {
     expect(state.errorMessage?.isNotEmpty ?? false, isTrue);
   });
 
-  testWidgets('Copy button shows feedback', (WidgetTester tester) async {
+  testWidgets('Copy button shows feedback', (tester) async {
     final history = [
       HistoryItem(
         id: '1',
@@ -138,7 +136,7 @@ void main() {
   });
 
   testWidgets('Stop button cancels stream and shows stopped label', (
-    WidgetTester tester,
+    tester,
   ) async {
     final state = _buildState()
       ..isStreaming = true
@@ -154,9 +152,7 @@ void main() {
     expect(state.wasCanceled, isTrue);
   });
 
-  testWidgets('Feedback toggle hides opposite icon', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('Feedback toggle hides opposite icon', (tester) async {
     final history = [
       HistoryItem(
         id: '1',
@@ -186,7 +182,7 @@ void main() {
     expect(find.byIcon(Icons.thumb_down_alt_outlined), findsOneWidget);
   });
 
-  testWidgets('Report problem opens report sheet', (WidgetTester tester) async {
+  testWidgets('Report problem opens report sheet', (tester) async {
     final history = [
       HistoryItem(
         id: '1',

@@ -15,7 +15,7 @@ import 'package:yaz_tatar/models.dart';
 import 'package:yaz_tatar/settings_store.dart';
 
 void main() {
-  testWidgets('App renders header', (WidgetTester tester) async {
+  testWidgets('App renders header', (tester) async {
     final localizer = Localizer();
     final appState = AppState(
       config: const AppConfig(
