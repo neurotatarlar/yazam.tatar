@@ -91,7 +91,7 @@ See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MO
 ## Dev tools
 - Backend lint/type/security: `requirements-dev.txt` (install via `make install-dev`).
 - Client lint: `very_good_analysis` (run `flutter pub get` in `client/`).
-- Pre-commit: run `make hooks` once, then `git commit` runs `make lint`. Set `RUN_SECURITY_CHECKS=1` to include security checks.
+- Pre-commit: run `make hooks` once, then `git commit` runs `make lint`.
 - You can override Flutter/Dart binaries with `FLUTTER=/path/to/flutter DART=/path/to/dart make lint-client`.
 
 ## Deployment
