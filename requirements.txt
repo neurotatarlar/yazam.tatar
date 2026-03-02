@@ -5,4 +5,4 @@ uvicorn[standard]>=0.40.0
 python-dotenv>=1.2.1
 prometheus-client>=0.24.1
 gunicorn>=25.0.3
-protobuf>=5.29.6,<6
+protobuf>=5.29.6,<8
