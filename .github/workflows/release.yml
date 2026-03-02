@@ -137,7 +137,7 @@ jobs:
       - build-windows
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: dist
       - name: Compute tag
