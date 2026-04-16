@@ -80,7 +80,9 @@ void main() {
         requestId: 'rid',
       ),
     ];
-    final state = _buildState(history: history)..correctedText = 'fixed';
+    final state = _buildState(history: history)
+      ..originalText = 'orig'
+      ..correctedText = 'fixed';
 
     await tester.pumpWidget(MyApp(appState: state));
 
@@ -157,7 +159,7 @@ void main() {
     expect(state.wasCanceled, isTrue);
   });
 
-  testWidgets('Feedback toggle hides opposite icon', (tester) async {
+  testWidgets('Workspace hides chat-style feedback controls', (tester) async {
     final history = [
       HistoryItem(
         id: '1',
@@ -171,23 +173,13 @@ void main() {
     final state = _buildState(history: history)..correctedText = 'fixed';
 
     await tester.pumpWidget(MyApp(appState: state));
-    expect(find.byIcon(Icons.thumb_up_alt_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.thumb_down_alt_outlined), findsOneWidget);
-
-    await tester.tap(find.byIcon(Icons.thumb_up_alt_outlined));
-    await tester.pump();
-
-    expect(find.byIcon(Icons.thumb_up_alt), findsOneWidget);
+    expect(find.byIcon(Icons.thumb_up_alt_outlined), findsNothing);
     expect(find.byIcon(Icons.thumb_down_alt_outlined), findsNothing);
-
-    await tester.tap(find.byIcon(Icons.thumb_up_alt));
-    await tester.pump();
-
-    expect(find.byIcon(Icons.thumb_up_alt_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.thumb_down_alt_outlined), findsOneWidget);
   });
 
-  testWidgets('Report problem opens report sheet', (tester) async {
+  testWidgets('Workspace hides report CTA in strict reference mode', (
+    tester,
+  ) async {
     final history = [
       HistoryItem(
         id: '1',
@@ -201,9 +193,6 @@ void main() {
     final state = _buildState(history: history)..correctedText = 'fixed';
 
     await tester.pumpWidget(MyApp(appState: state));
-    await tester.tap(find.text('actions.reportProblem'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('report.title'), findsOneWidget);
+    expect(find.text('actions.reportProblem'), findsNothing);
   });
 }

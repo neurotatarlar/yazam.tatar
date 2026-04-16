@@ -7,28 +7,22 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_state.dart';
-import 'sheets/history_sheet.dart' deferred as history_sheet;
-import 'sheets/report_sheet.dart' deferred as report_sheet;
-import 'sheets/settings_sheet.dart' deferred as settings_sheet;
 
 const _brandColor = Color(0xFF4F46E5);
-const _bgLight = Color(0xFFF8FAFC);
-const _surfaceLight = Color(0xFFFFFFFF);
-const _textLight = Color(0xFF0F172A);
-const _mutedLight = Color(0xFF64748B);
-const _borderLight = Color(0xFFE2E8F0);
+const _bg = Color(0xFFFAF8FF);
+const _headerBg = Color(0xFFF8FAFC);
+const _sidebarBg = Color(0xFFF1F5F9);
+const _surface = Color(0xFFFFFFFF);
+const _surfaceLow = Color(0xFFF2F3FF);
+const _surfaceHigh = Color(0xFFE2E7FF);
+const _text = Color(0xFF131B2E);
+const _muted = Color(0xFF76777D);
+const _outline = Color(0xFFC6C6CD);
 
-const _bgDark = Color(0xFF0F172A);
-const _surfaceDark = Color(0xFF131B2E);
-const _textDark = Color(0xFFF8FAFC);
-const _mutedDark = Color(0xFF94A3B8);
-const _borderDark = Color(0xFF334155);
-
-const _sidebarWidth = 252.0;
-const _topBarHeight = 64.0;
-
+const _sidebarWidth = 256.0;
+const _headerHeight = 64.0;
+const _wordmark = 'YAZAM.TATAR';
 const _tbankDonationUrl = 'https://www.tbank.ru/cf/5DeXHs3nnOy';
-const _revolutDonationUrl = 'https://revolut.me/gaydmi';
 
 /// App entry point that boots configuration and state.
 Future<void> main() async {
@@ -52,9 +46,8 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             title: state.config.appName,
             debugShowCheckedModeBanner: false,
-            themeMode: state.settings.themeMode,
-            theme: _buildTheme(Brightness.light),
-            darkTheme: _buildTheme(Brightness.dark),
+            themeMode: ThemeMode.light,
+            theme: _buildTheme(),
             home: const HomePage(),
           );
         },
@@ -62,46 +55,74 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  ThemeData _buildTheme(Brightness brightness) {
-    final isDark = brightness == Brightness.dark;
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _brandColor,
-      brightness: brightness,
+  ThemeData _buildTheme() {
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: _brandColor,
+        ).copyWith(
+          surface: _surface,
+          onSurface: _text,
+          onSurfaceVariant: _muted,
+          outline: _outline,
+          outlineVariant: _surfaceHigh,
+        );
+
+    final baseText = ThemeData(brightness: Brightness.light).textTheme.apply(
+      fontFamily: 'Inter',
+      fontFamilyFallback: const [
+        'Manrope',
+        'Newsreader',
+        'Noto Sans',
+        'Noto Sans UI',
+        'Segoe UI',
+        'Roboto',
+        'Arial',
+        'sans-serif',
+      ],
+      bodyColor: _text,
+      displayColor: _text,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: isDark ? _bgDark : _bgLight,
-      cardColor: isDark ? _surfaceDark : _surfaceLight,
-      dividerColor: isDark ? _borderDark : _borderLight,
-      textTheme:
-          ThemeData(
-            brightness: brightness,
-          ).textTheme.apply(
-            fontFamily: 'Inter',
-            fontFamilyFallback: const [
-              'Manrope',
-              'Noto Sans',
-              'Noto Sans UI',
-              'Segoe UI',
-              'Roboto',
-              'Arial',
-              'sans-serif',
-            ],
-            bodyColor: isDark ? _textDark : _textLight,
-            displayColor: isDark ? _textDark : _textLight,
-          ),
+      scaffoldBackgroundColor: _bg,
+      cardColor: _surface,
+      dividerColor: _outline,
+      textTheme: baseText.copyWith(
+        titleLarge: baseText.titleLarge?.copyWith(
+          fontFamily: 'Manrope',
+          fontWeight: FontWeight.w800,
+        ),
+        titleMedium: baseText.titleMedium?.copyWith(
+          fontFamily: 'Manrope',
+          fontWeight: FontWeight.w700,
+        ),
+        titleSmall: baseText.titleSmall?.copyWith(
+          fontFamily: 'Manrope',
+          fontWeight: FontWeight.w700,
+        ),
+        bodyLarge: baseText.bodyLarge?.copyWith(
+          fontFamily: 'Newsreader',
+          fontSize: 20,
+          height: 1.55,
+        ),
+        labelSmall: baseText.labelSmall?.copyWith(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+        ),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? _surfaceDark : _surfaceLight,
+        fillColor: _surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: isDark ? _borderDark : _borderLight),
+          borderSide: const BorderSide(color: _outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: isDark ? _borderDark : _borderLight),
+          borderSide: const BorderSide(color: _outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -152,31 +173,41 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isDesktop = constraints.maxWidth >= 1100;
-            if (!isDesktop) {
-              return _CompactLayout(
-                state: state,
-                inputController: _inputController,
-                inputFocusNode: _inputFocusNode,
-                onOpenHistory: () => _openHistory(context, state),
-                onOpenSettings: () => _openSettings(context, state),
-                onOpenReport: () => _openReportSheet(context, state),
-                onOpenSupport: (url) => _openExternal(context, state, url),
-              );
-            }
-            return _DesktopLayout(
-              state: state,
-              inputController: _inputController,
-              inputFocusNode: _inputFocusNode,
-              width: constraints.maxWidth,
-              onOpenHistory: () => _openHistory(context, state),
-              onOpenSettings: () => _openSettings(context, state),
-              onOpenReport: () => _openReportSheet(context, state),
-              onOpenSupport: (url) => _openExternal(context, state, url),
-            );
-          },
+        child: Column(
+          children: [
+            _HeaderBar(state: state),
+            Expanded(
+              child: Row(
+                children: [
+                  _Sidebar(
+                    state: state,
+                    onOpenSupport: (url) => _openExternal(context, state, url),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: _WorkspacePanel(
+                              state: state,
+                              inputController: _inputController,
+                              inputFocusNode: _inputFocusNode,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _ActionBar(
+                            state: state,
+                            inputController: _inputController,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -189,81 +220,6 @@ class _HomePageState extends State<HomePage> {
     _inputController.text = state.originalText;
     _inputController.selection = TextSelection.fromPosition(
       TextPosition(offset: _inputController.text.length),
-    );
-  }
-
-  Future<void> _openHistory(BuildContext context, AppState state) async {
-    await history_sheet.loadLibrary();
-    if (!context.mounted) {
-      return;
-    }
-    final isDesktop = MediaQuery.of(context).size.width >= 1100;
-    if (isDesktop) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => Dialog(
-          child: SizedBox(
-            width: 820,
-            child: history_sheet.HistorySheet(state: state),
-          ),
-        ),
-      );
-      return;
-    }
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => history_sheet.HistorySheet(state: state),
-    );
-  }
-
-  Future<void> _openSettings(BuildContext context, AppState state) async {
-    await settings_sheet.loadLibrary();
-    if (!context.mounted) {
-      return;
-    }
-    final isDesktop = MediaQuery.of(context).size.width >= 1100;
-    if (isDesktop) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => Dialog(
-          child: SizedBox(
-            width: 560,
-            child: settings_sheet.SettingsSheet(state: state),
-          ),
-        ),
-      );
-      return;
-    }
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => settings_sheet.SettingsSheet(state: state),
-    );
-  }
-
-  Future<void> _openReportSheet(BuildContext context, AppState state) async {
-    await report_sheet.loadLibrary();
-    if (!context.mounted) {
-      return;
-    }
-    final isDesktop = MediaQuery.of(context).size.width >= 1100;
-    if (isDesktop) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => Dialog(
-          child: SizedBox(
-            width: 620,
-            child: report_sheet.ReportSheet(state: state),
-          ),
-        ),
-      );
-      return;
-    }
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => report_sheet.ReportSheet(state: state),
     );
   }
 
@@ -284,231 +240,108 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _DesktopLayout extends StatelessWidget {
-  const _DesktopLayout({
-    required this.state,
-    required this.inputController,
-    required this.inputFocusNode,
-    required this.width,
-    required this.onOpenHistory,
-    required this.onOpenSettings,
-    required this.onOpenReport,
-    required this.onOpenSupport,
-  });
+class _HeaderBar extends StatelessWidget {
+  const _HeaderBar({required this.state});
 
   final AppState state;
-  final TextEditingController inputController;
-  final FocusNode inputFocusNode;
-  final double width;
-  final VoidCallback onOpenHistory;
-  final VoidCallback onOpenSettings;
-  final VoidCallback onOpenReport;
-  final Future<void> Function(String url) onOpenSupport;
 
   @override
   Widget build(BuildContext context) {
-    final showHistoryRail = width >= 1480;
-
-    return Row(
-      children: [
-        _Sidebar(
-          state: state,
-          onOpenHistory: onOpenHistory,
-          onOpenSettings: onOpenSettings,
-          onOpenSupport: onOpenSupport,
-        ),
-        Expanded(
-          child: Column(
-            children: [
-              _TopBar(state: state),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: _WorkspacePanel(
-                                state: state,
-                                inputController: inputController,
-                                inputFocusNode: inputFocusNode,
-                                onOpenReport: onOpenReport,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _ActionBar(
-                              state: state,
-                              inputController: inputController,
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (showHistoryRail) ...[
-                        const SizedBox(width: 20),
-                        SizedBox(
-                          width: 320,
-                          child: _HistoryRail(state: state),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
+    return Container(
+      height: _headerHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: const BoxDecoration(
+        color: _headerBg,
+        border: Border(bottom: BorderSide(color: _outline)),
+      ),
+      child: Row(
+        children: [
+          Text(
+            _wordmark,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w400,
+              letterSpacing: 1.6,
+            ),
           ),
-        ),
-      ],
+          const Spacer(),
+          _LanguagePill(state: state),
+        ],
+      ),
     );
   }
 }
 
-class _CompactLayout extends StatelessWidget {
-  const _CompactLayout({
-    required this.state,
-    required this.inputController,
-    required this.inputFocusNode,
-    required this.onOpenHistory,
-    required this.onOpenSettings,
-    required this.onOpenReport,
-    required this.onOpenSupport,
-  });
+class _LanguagePill extends StatelessWidget {
+  const _LanguagePill({required this.state});
 
   final AppState state;
-  final TextEditingController inputController;
-  final FocusNode inputFocusNode;
-  final VoidCallback onOpenHistory;
-  final VoidCallback onOpenSettings;
-  final VoidCallback onOpenReport;
-  final Future<void> Function(String url) onOpenSupport;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _TopBar(state: state),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                Expanded(
-                  child: _WorkspacePanel(
-                    state: state,
-                    inputController: inputController,
-                    inputFocusNode: inputFocusNode,
-                    onOpenReport: onOpenReport,
-                    forceVertical: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _ActionBar(state: state, inputController: inputController),
-              ],
-            ),
+    Widget code(String lang, String label) {
+      final selected = state.settings.language == lang;
+      return InkWell(
+        onTap: () => unawaited(state.setLanguage(lang)),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: selected ? _brandColor : _muted,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            letterSpacing: 0.4,
           ),
         ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onOpenHistory,
-                    icon: const Icon(Icons.history),
-                    label: Text(state.t('history.title')),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onOpenSettings,
-                    icon: const Icon(Icons.settings),
-                    label: Text(state.t('settings.title')),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.outlined(
-                  onPressed: () => unawaited(onOpenSupport(_tbankDonationUrl)),
-                  icon: const Icon(Icons.favorite),
-                  tooltip: state.t('nav.support'),
-                ),
-                const SizedBox(width: 6),
-                IconButton.outlined(
-                  onPressed: () =>
-                      unawaited(onOpenSupport(_revolutDonationUrl)),
-                  icon: const Icon(Icons.currency_exchange),
-                  tooltip: state.t('nav.support'),
-                ),
-              ],
-            ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _surfaceLow,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          code('tt', 'TT'),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            child: Text('/', style: TextStyle(color: _outline)),
           ),
-        ),
-      ],
+          code('en', 'EN'),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            child: Text('/', style: TextStyle(color: _outline)),
+          ),
+          code('ru', 'RU'),
+        ],
+      ),
     );
   }
 }
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({
-    required this.state,
-    required this.onOpenHistory,
-    required this.onOpenSettings,
-    required this.onOpenSupport,
-  });
+  const _Sidebar({required this.state, required this.onOpenSupport});
 
   final AppState state;
-  final VoidCallback onOpenHistory;
-  final VoidCallback onOpenSettings;
   final Future<void> Function(String url) onOpenSupport;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? _surfaceDark : _surfaceLight;
-    final border = isDark ? _borderDark : _borderLight;
-    final muted = isDark ? _mutedDark : _mutedLight;
-
     return Container(
       width: _sidebarWidth,
-      decoration: BoxDecoration(
-        color: surface,
-        border: Border(right: BorderSide(color: border)),
-      ),
+      decoration: const BoxDecoration(color: _sidebarBg),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: _brandColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.edit_note, color: Colors.white),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    state.config.appName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 26),
+          const Padding(
+            padding: EdgeInsets.only(left: 20, right: 210, bottom: 14),
+            child: SizedBox(
+              height: 2,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: _brandColor),
+              ),
             ),
           ),
-          const SizedBox(height: 6),
           _SidebarItem(
             icon: Icons.edit_note,
             label: state.t('nav.workspace'),
@@ -518,49 +351,16 @@ class _Sidebar extends StatelessWidget {
           _SidebarItem(
             icon: Icons.history,
             label: state.t('history.title'),
-            onTap: onOpenHistory,
           ),
           _SidebarItem(
             icon: Icons.settings,
             label: state.t('settings.title'),
-            onTap: onOpenSettings,
           ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: _brandColor.withValues(alpha: 0.08),
-                border: Border.all(color: _brandColor.withValues(alpha: 0.25)),
-              ),
-              child: Column(
-                children: [
-                  ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.favorite, color: _brandColor),
-                    title: Text(
-                      state.t('support.tbank'),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    onTap: () => unawaited(onOpenSupport(_tbankDonationUrl)),
-                  ),
-                  Divider(height: 1, color: _brandColor.withValues(alpha: 0.2)),
-                  ListTile(
-                    dense: true,
-                    leading: const Icon(
-                      Icons.currency_exchange,
-                      color: _brandColor,
-                    ),
-                    title: Text(
-                      state.t('support.revolut'),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    onTap: () => unawaited(onOpenSupport(_revolutDonationUrl)),
-                  ),
-                ],
-              ),
-            ),
+          _SidebarItem(
+            icon: Icons.favorite,
+            label: state.t('nav.support'),
+            iconColor: const Color(0xFFF43F5E),
+            onTap: () => unawaited(onOpenSupport(_tbankDonationUrl)),
           ),
           const Spacer(),
           Padding(
@@ -569,28 +369,35 @@ class _Sidebar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  state.t('partners.title'),
+                  state.t('partners.title').toUpperCase(),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: muted,
+                    color: _muted,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: 1,
                   ),
                 ),
                 const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/partners/minmol.jpeg',
-                    fit: BoxFit.contain,
-                    height: 50,
+                Opacity(
+                  opacity: 0.82,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Image.asset(
+                      'assets/partners/minmol.jpeg',
+                      fit: BoxFit.contain,
+                      height: 50,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/partners/tatfor.jpeg',
-                    fit: BoxFit.contain,
-                    height: 50,
+                Opacity(
+                  opacity: 0.82,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Image.asset(
+                      'assets/partners/tatfor.jpeg',
+                      fit: BoxFit.contain,
+                      height: 50,
+                    ),
                   ),
                 ),
               ],
@@ -606,38 +413,36 @@ class _SidebarItem extends StatelessWidget {
   const _SidebarItem({
     required this.icon,
     required this.label,
-    required this.onTap,
     this.selected = false,
+    this.onTap,
+    this.iconColor,
   });
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
   final bool selected;
+  final VoidCallback? onTap;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
-    final bg = selected
-        ? _brandColor.withValues(alpha: 0.12)
-        : Colors.transparent;
-    final fg = selected
-        ? _brandColor
-        : Theme.of(context).textTheme.bodyMedium?.color;
+    final fg = selected ? _brandColor : _text.withValues(alpha: 0.72);
+    final iconTint = iconColor ?? fg;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(4),
         child: Container(
           decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(10),
+            color: selected ? _surfaceHigh : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Row(
             children: [
-              Icon(icon, color: fg),
+              Icon(icon, size: 18, color: iconTint),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -658,140 +463,36 @@ class _SidebarItem extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.state});
-
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final border = isDark ? _borderDark : _borderLight;
-    final muted = isDark ? _mutedDark : _mutedLight;
-
-    return Container(
-      height: _topBarHeight,
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: border)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: [
-          Text(
-            state.t('nav.workspace'),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Text(
-            state.t('panel.flow'),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: muted,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          _LanguagePill(state: state),
-        ],
-      ),
-    );
-  }
-}
-
-class _LanguagePill extends StatelessWidget {
-  const _LanguagePill({required this.state});
-
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final border = isDark ? _borderDark : _borderLight;
-
-    Widget item(String code, String label) {
-      final selected = state.settings.language == code;
-      return Expanded(
-        child: InkWell(
-          onTap: () => unawaited(state.setLanguage(code)),
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            decoration: BoxDecoration(
-              color: selected ? _brandColor.withValues(alpha: 0.12) : null,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: selected ? _brandColor : null,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      width: 210,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: border),
-      ),
-      padding: const EdgeInsets.all(3),
-      child: Row(
-        children: [
-          item('tt', 'TT'),
-          item('en', 'EN'),
-          item('ru', 'RU'),
-        ],
-      ),
-    );
-  }
-}
-
 class _WorkspacePanel extends StatelessWidget {
   const _WorkspacePanel({
     required this.state,
     required this.inputController,
     required this.inputFocusNode,
-    required this.onOpenReport,
-    this.forceVertical = false,
   });
 
   final AppState state;
   final TextEditingController inputController;
   final FocusNode inputFocusNode;
-  final VoidCallback onOpenReport;
-  final bool forceVertical;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final border = isDark ? _borderDark : _borderLight;
-    final muted = isDark ? _mutedDark : _mutedLight;
-
     final correctionText = state.correctedText;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final horizontal = !forceVertical && constraints.maxWidth >= 920;
-        final divider = Container(width: 1, color: border);
+        final horizontal = constraints.maxWidth >= 960;
 
         final originalPane = Container(
+          color: _surface,
           padding: const EdgeInsets.all(24),
-          color: isDark ? _surfaceDark : _surfaceLight,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                state.t('panel.original'),
+                state.t('panel.original').toUpperCase(),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: muted,
-                  letterSpacing: 1.1,
-                  fontWeight: FontWeight.w700,
+                  color: _muted,
+                  letterSpacing: 1.2,
                 ),
               ),
               const SizedBox(height: 12),
@@ -810,10 +511,7 @@ class _WorkspacePanel extends StatelessWidget {
                     filled: false,
                     contentPadding: EdgeInsets.zero,
                   ),
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    height: 1.55,
-                    fontSize: 18,
-                  ),
+                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ),
             ],
@@ -821,21 +519,18 @@ class _WorkspacePanel extends StatelessWidget {
         );
 
         final correctionPane = Container(
+          color: _surfaceLow,
           padding: const EdgeInsets.all(24),
-          color: isDark
-              ? _surfaceDark.withValues(alpha: 0.92)
-              : _surfaceLight.withValues(alpha: 0.92),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Text(
-                    state.t('panel.corrected'),
+                    state.t('panel.corrected').toUpperCase(),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: _brandColor,
-                      letterSpacing: 1.1,
-                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
                     ),
                   ),
                   const Spacer(),
@@ -845,14 +540,18 @@ class _WorkspacePanel extends StatelessWidget {
                         const SizedBox(
                           width: 14,
                           height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF10B981),
+                            backgroundColor: Color(0x3310B981),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          state.t('status.correcting'),
+                          state.t('status.correcting').toUpperCase(),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
-                                color: muted,
+                                color: const Color(0xFF10B981),
                                 fontWeight: FontWeight.w700,
                               ),
                         ),
@@ -867,31 +566,27 @@ class _WorkspacePanel extends StatelessWidget {
                   correctionText: correctionText,
                 ),
               ),
-              if (!state.isStreaming && correctionText.isNotEmpty)
-                _FeedbackRow(state: state, onOpenReport: onOpenReport),
             ],
           ),
         );
 
         return Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                blurRadius: 16,
-                offset: const Offset(0, 5),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _outline),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(10),
             child: horizontal
                 ? Row(
                     children: [
                       Expanded(child: originalPane),
-                      divider,
+                      const SizedBox(
+                        width: 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(color: _outline),
+                        ),
+                      ),
                       Expanded(child: correctionPane),
                     ],
                   )
@@ -901,7 +596,12 @@ class _WorkspacePanel extends StatelessWidget {
                         height: constraints.maxHeight * 0.48,
                         child: originalPane,
                       ),
-                      Container(height: 1, color: border),
+                      const SizedBox(
+                        height: 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(color: _outline),
+                        ),
+                      ),
                       Expanded(child: correctionPane),
                     ],
                   ),
@@ -921,33 +621,10 @@ class _CorrectionBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: Theme.of(context).colorScheme.onErrorContainer,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                state.errorMessage!,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: state.retry,
-              child: Text(state.t('actions.retry')),
-            ),
-          ],
+      return Text(
+        state.errorMessage!,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.error,
         ),
       );
     }
@@ -965,78 +642,13 @@ class _CorrectionBody extends StatelessWidget {
     if (correctionText.isNotEmpty) {
       return SelectableText(
         correctionText,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          height: 1.55,
-          fontSize: 18,
-        ),
+        style: Theme.of(context).textTheme.bodyLarge,
       );
     }
 
     return Text(
       state.t('empty.title'),
-      style: Theme.of(
-        context,
-      ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).hintColor),
-    );
-  }
-}
-
-class _FeedbackRow extends StatelessWidget {
-  const _FeedbackRow({required this.state, required this.onOpenReport});
-
-  final AppState state;
-  final VoidCallback onOpenReport;
-
-  @override
-  Widget build(BuildContext context) {
-    final feedback = state.activeFeedback;
-    final showUp = feedback != FeedbackChoice.down;
-    final showDown = feedback != FeedbackChoice.up;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 460;
-        return Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Row(
-            children: [
-              if (showUp)
-                IconButton(
-                  onPressed: () =>
-                      state.toggleActiveFeedback(FeedbackChoice.up),
-                  icon: Icon(
-                    feedback == FeedbackChoice.up
-                        ? Icons.thumb_up_alt
-                        : Icons.thumb_up_alt_outlined,
-                  ),
-                ),
-              if (showDown)
-                IconButton(
-                  onPressed: () =>
-                      state.toggleActiveFeedback(FeedbackChoice.down),
-                  icon: Icon(
-                    feedback == FeedbackChoice.down
-                        ? Icons.thumb_down_alt
-                        : Icons.thumb_down_alt_outlined,
-                  ),
-                ),
-              const Spacer(),
-              if (compact)
-                IconButton(
-                  onPressed: onOpenReport,
-                  icon: const Icon(Icons.flag_outlined),
-                  tooltip: state.t('actions.reportProblem'),
-                )
-              else
-                TextButton.icon(
-                  onPressed: onOpenReport,
-                  icon: const Icon(Icons.flag_outlined),
-                  label: Text(state.t('actions.reportProblem')),
-                ),
-            ],
-          ),
-        );
-      },
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: _muted),
     );
   }
 }
@@ -1049,10 +661,6 @@ class _ActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final border = isDark ? _borderDark : _borderLight;
-    final muted = isDark ? _mutedDark : _mutedLight;
-
     final sourceText = inputController.text;
     final correctionText = state.correctedText;
     final words = _wordCount(sourceText);
@@ -1060,9 +668,8 @@ class _ActionBar extends StatelessWidget {
 
     final canSubmit = sourceText.trim().isNotEmpty && !state.isStreaming;
     final canCopy = correctionText.trim().isNotEmpty;
-    final canReplace = correctionText.trim().isNotEmpty;
 
-    final actionControls = [
+    final actions = [
       if (state.isStreaming)
         OutlinedButton.icon(
           onPressed: state.stopStreaming,
@@ -1072,50 +679,77 @@ class _ActionBar extends StatelessWidget {
       else
         FilledButton.icon(
           onPressed: canSubmit ? state.submit : null,
-          icon: const Icon(Icons.auto_fix_high),
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+          iconAlignment: IconAlignment.end,
+          icon: const Icon(Icons.auto_fix_high, size: 16),
           label: Text(state.t('actions.correctText')),
         ),
-      const SizedBox(width: 8),
+      const SizedBox(width: 14),
+      const SizedBox(
+        width: 1,
+        height: 32,
+        child: DecoratedBox(decoration: BoxDecoration(color: _outline)),
+      ),
+      const SizedBox(width: 10),
       IconButton(
         tooltip: state.t('actions.copy'),
         onPressed: canCopy
             ? () => _copyToClipboard(context, state, correctionText)
             : null,
-        icon: const Icon(Icons.content_copy),
+        icon: Icon(
+          Icons.content_copy,
+          size: 18,
+          color: _text.withValues(alpha: 0.72),
+        ),
       ),
       IconButton(
         onPressed: () {
           inputController.clear();
           state.updateOriginalText('');
         },
-        icon: const Icon(Icons.delete_sweep),
         tooltip: state.t('actions.clearOriginal'),
-      ),
-      IconButton(
-        onPressed: canReplace
-            ? () {
-                final next = correctionText;
-                inputController.text = next;
-                inputController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: next.length),
-                );
-                state.updateOriginalText(next);
-              }
-            : null,
-        icon: const Icon(Icons.swap_horiz),
-        tooltip: state.t('actions.replaceOriginal'),
+        icon: const Icon(Icons.delete, size: 18, color: Color(0xFFDC2626)),
       ),
     ];
+
+    Widget metricsRow() => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          state.t('metrics.words', vars: {'count': '$words'}).toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: _muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 24),
+        Text(
+          state
+              .t('metrics.characters', vars: {'count': '$chars'})
+              .toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: _muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 900;
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: border),
-            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(10),
+            color: _surfaceHigh,
           ),
           child: compact
               ? Column(
@@ -1123,153 +757,24 @@ class _ActionBar extends StatelessWidget {
                   children: [
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
-                      child: Row(children: actionControls),
+                      child: Row(children: actions),
                     ),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 14,
-                      runSpacing: 4,
-                      children: [
-                        Text(
-                          state.t('metrics.words', vars: {'count': '$words'}),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: muted,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        Text(
-                          state.t(
-                            'metrics.characters',
-                            vars: {'count': '$chars'},
-                          ),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: muted,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ],
-                    ),
+                    metricsRow(),
                   ],
                 )
-              : Row(
-                  children: [
-                    ...actionControls,
-                    const Spacer(),
-                    Text(
-                      state.t('metrics.words', vars: {'count': '$words'}),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: muted,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    Text(
-                      state.t('metrics.characters', vars: {'count': '$chars'}),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: muted,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+              : SizedBox(
+                  height: 42,
+                  child: Row(
+                    children: [
+                      ...actions,
+                      const Spacer(),
+                      metricsRow(),
+                    ],
+                  ),
                 ),
         );
       },
-    );
-  }
-}
-
-class _HistoryRail extends StatelessWidget {
-  const _HistoryRail({required this.state});
-
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final border = isDark ? _borderDark : _borderLight;
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: border),
-        color: Theme.of(context).cardColor,
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Text(
-                  state.t('history.title'),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Spacer(),
-                const Icon(Icons.history, size: 18),
-              ],
-            ),
-          ),
-          Divider(height: 1, color: border),
-          Expanded(
-            child: state.history.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: Text(state.t('history.empty')),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: state.history.length,
-                    itemBuilder: (context, index) {
-                      final item = state.history[index];
-                      return InkWell(
-                        onTap: () => unawaited(state.loadHistoryItem(item)),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _formatTimestamp(item.timestamp),
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(color: _brandColor),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  _shortPreview(item.original),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  _shortPreview(item.corrected),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1297,25 +802,10 @@ Future<void> _copyToClipboard(
   }
 }
 
-String _formatTimestamp(DateTime timestamp) {
-  final local = timestamp.toLocal();
-  final hour = local.hour.toString().padLeft(2, '0');
-  final minute = local.minute.toString().padLeft(2, '0');
-  return '$hour:$minute';
-}
-
 int _wordCount(String text) {
   final trimmed = text.trim();
   if (trimmed.isEmpty) {
     return 0;
   }
   return trimmed.split(RegExp(r'\s+')).length;
-}
-
-String _shortPreview(String value) {
-  final oneLine = value.replaceAll('\n', ' ').trim();
-  if (oneLine.length <= 110) {
-    return oneLine;
-  }
-  return '${oneLine.substring(0, 107)}...';
 }

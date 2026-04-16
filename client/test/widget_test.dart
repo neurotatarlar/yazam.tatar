@@ -35,7 +35,7 @@ void main() {
     );
 
     await tester.pumpWidget(MyApp(appState: appState));
-    expect(find.text('nav.workspace'), findsOneWidget);
-    expect(find.text('panel.flow'), findsOneWidget);
+    expect(find.text('YAZAM.TATAR'), findsOneWidget);
+    expect(find.text('PANEL.ORIGINAL'), findsOneWidget);
   });
 }

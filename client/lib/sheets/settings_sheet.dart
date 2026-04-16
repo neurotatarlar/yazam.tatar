@@ -1,9 +1,9 @@
-// Settings modal for theme, typography, and data controls.
+// Settings modal for typography, behavior, and data controls.
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 
-/// Settings sheet for theme, font size, and persistence controls.
+/// Settings sheet for font size and persistence controls.
 class SettingsSheet extends StatelessWidget {
   const SettingsSheet({required this.state, super.key});
 
@@ -43,14 +43,7 @@ class SettingsSheet extends StatelessWidget {
                 children: [
                   _SettingsCard(
                     title: state.t('settings.appearance'),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _ThemeSelector(state: state),
-                        const SizedBox(height: 16),
-                        _FontSizeSelector(state: state),
-                      ],
-                    ),
+                    child: _FontSizeSelector(state: state),
                   ),
                   const SizedBox(height: 12),
                   _SettingsCard(
@@ -165,45 +158,6 @@ class _SettingsCard extends StatelessWidget {
           child,
         ],
       ),
-    );
-  }
-}
-
-/// Theme selection UI.
-class _ThemeSelector extends StatelessWidget {
-  const _ThemeSelector({required this.state});
-
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(state.t('settings.theme')),
-        const SizedBox(height: 8),
-        SegmentedButton<ThemeMode>(
-          segments: [
-            ButtonSegment(
-              value: ThemeMode.light,
-              label: Text(state.t('settings.light')),
-            ),
-            ButtonSegment(
-              value: ThemeMode.dark,
-              label: Text(state.t('settings.dark')),
-            ),
-            ButtonSegment(
-              value: ThemeMode.system,
-              label: Text(state.t('settings.system')),
-            ),
-          ],
-          selected: {state.settings.themeMode},
-          showSelectedIcon: false,
-          onSelectionChanged: (selection) => state.updateSettings(
-            state.settings.copyWith(themeMode: selection.first),
-          ),
-        ),
-      ],
     );
   }
 }
