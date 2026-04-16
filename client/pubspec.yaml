@@ -58,6 +58,41 @@ flutter:
     - assets/i18n/ru.json
     - assets/partners/minmol.jpeg
     - assets/partners/tatfor.jpeg
+    - assets/fonts/Inter-Variable.ttf
+    - assets/fonts/Manrope-Variable.ttf
+    - assets/fonts/Newsreader-Variable.ttf
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 800
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 800
+    - family: Newsreader
+      fonts:
+        - asset: assets/fonts/Newsreader-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Newsreader-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/Newsreader-Variable.ttf
+          weight: 600
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

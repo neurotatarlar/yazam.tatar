@@ -260,7 +260,7 @@ class _HeaderBar extends StatelessWidget {
             _wordmark,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontFamily: 'Manrope',
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w800,
               letterSpacing: 1.6,
             ),
           ),
