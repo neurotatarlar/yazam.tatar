@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://127.0.0.1:3000",
-  "appName": "Yaz.Tatar!",
+  "appName": "Yazam.Tatar",
   "reportEmail": "support@example.com",
   "reportTelegramUrl": "https://t.me/example",
   "buildSha": "dev",

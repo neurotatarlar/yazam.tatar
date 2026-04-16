@@ -1,6 +1,6 @@
 {
-    "name": "yaz_tatar",
-    "short_name": "yaz_tatar",
+    "name": "Yazam.Tatar",
+    "short_name": "Yazam",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

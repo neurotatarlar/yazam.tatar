@@ -56,6 +56,7 @@ flutter:
     - assets/i18n/en.json
     - assets/i18n/tt.json
     - assets/i18n/ru.json
+    - assets/brand/tulip.png
     - assets/partners/minmol.jpeg
     - assets/partners/tatfor.jpeg
     - assets/fonts/Inter-Variable.ttf

@@ -175,7 +175,10 @@ class _HomePageState extends State<HomePage> {
       body: SafeArea(
         child: Column(
           children: [
-            _HeaderBar(state: state),
+            _HeaderBar(
+              state: state,
+              onBrandTap: _focusWorkspaceInput,
+            ),
             Expanded(
               child: Row(
                 children: [
@@ -238,12 +241,20 @@ class _HomePageState extends State<HomePage> {
       );
     }
   }
+
+  void _focusWorkspaceInput() {
+    if (!mounted) {
+      return;
+    }
+    _inputFocusNode.requestFocus();
+  }
 }
 
 class _HeaderBar extends StatelessWidget {
-  const _HeaderBar({required this.state});
+  const _HeaderBar({required this.state, required this.onBrandTap});
 
   final AppState state;
+  final VoidCallback onBrandTap;
 
   @override
   Widget build(BuildContext context) {
@@ -256,12 +267,30 @@ class _HeaderBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(
-            _wordmark,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontFamily: 'Manrope',
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.6,
+          InkWell(
+            onTap: onBrandTap,
+            mouseCursor: SystemMouseCursors.click,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+              child: Row(
+                children: [
+                  Image.asset(
+                    'assets/brand/tulip.png',
+                    width: 26,
+                    height: 26,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    _wordmark,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 2.8,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const Spacer(),
