@@ -406,33 +406,39 @@ class _Sidebar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Opacity(
-                  opacity: 0.82,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Image.asset(
-                      'assets/partners/minmol.jpeg',
-                      fit: BoxFit.contain,
-                      height: 50,
-                    ),
-                  ),
+                const _PartnerLogo(
+                  assetPath: 'assets/partners/minmol.png',
                 ),
                 const SizedBox(height: 8),
-                Opacity(
-                  opacity: 0.82,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Image.asset(
-                      'assets/partners/tatfor.jpeg',
-                      fit: BoxFit.contain,
-                      height: 50,
-                    ),
-                  ),
+                const _PartnerLogo(
+                  assetPath: 'assets/partners/tatfor.jpeg',
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PartnerLogo extends StatelessWidget {
+  const _PartnerLogo({required this.assetPath});
+
+  final String assetPath;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 68,
+      child: FittedBox(
+        alignment: Alignment.centerLeft,
+        fit: BoxFit.scaleDown,
+        child: Image.asset(
+          assetPath,
+          height: 64,
+        ),
       ),
     );
   }
