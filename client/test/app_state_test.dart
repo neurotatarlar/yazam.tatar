@@ -221,7 +221,7 @@ void main() {
     expect(state.isStreaming, true);
     expect(state.statusText, 'status.correcting');
     expect(state.activeOriginal, 'hello');
-    expect(state.originalText, '');
+    expect(state.originalText, 'hello');
 
     backend
       ..emit(

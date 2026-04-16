@@ -44,6 +44,9 @@ See `deploy/README.md` for the GitHub Actions setup (manual init + auto deploy o
   - `deploy/nginx/`, `deploy/systemd/` — production server configs
   - `.githooks/` — pre-commit hook
 
+## Contributor guidance
+- Frontend and backend contribution rules are in `AGENTS.md`.
+
 ## Scripts
 - `make dev` — run FastAPI via uvicorn (auto-reload)
 - `make test-backend` — run backend tests (pytest)
@@ -70,14 +73,6 @@ Payload shape:
 
 Validation: rejects empty/whitespace-only text; enforces `MAX_CHARS`. Rate limits per minute/day plus max concurrent streams per IP.
 
-## Client highlights (Flutter)
-- Responsive layout optimized for desktop and mobile widths.
-- i18n via `client/assets/i18n/*.json`; language choice saved locally.
-- Streaming UX with incremental output and auto-scroll during generation.
-- Local history sheet (desktop dialog, mobile bottom sheet) with clear/save toggles.
-- Settings sheet: theme, font size, auto-scroll, history save/clear.
-- Report modal with prefilled mailto/Telegram including `request_id`.
-
 ## Flutter app (mobile/web/desktop)
 - Location: `client`
 - Config: `client/assets/config.json` (edit `baseUrl`, `appName`, report links).
@@ -90,20 +85,11 @@ See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MO
 
 ## Dev tools
 - Backend lint/type/security: `requirements-dev.txt` (install via `make install-dev`).
-- Client lint: `very_good_analysis` (run `flutter pub get` in `client/`).
 - Pre-commit: run `make hooks` once, then `git commit` runs `make lint`.
-- You can override Flutter/Dart binaries with `FLUTTER=/path/to/flutter DART=/path/to/dart make lint-client`.
 
 ## Deployment
 - Systemd unit files live in `deploy/systemd/`.
 - Example Nginx configs (including SSE-friendly settings) live in `deploy/nginx/`.
-
-## SEO plan (not implemented)
-- Keep the Flutter app at `/` (no extra steps for users).
-- Add static HTML pages at `/about`, `/faq`, `/privacy` with real text content.
-- Add meta tags (title/description/OG/Twitter) and JSON-LD schema in `client/web/index.html`.
-- Provide `sitemap.xml` + `robots.txt`, submit to Google Search Console.
-- Revisit once a domain + HTTPS is enabled.
 
 ## SSE troubleshooting
 - Ensure reverse proxy disables buffering and respects long-lived connections.

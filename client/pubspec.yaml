@@ -56,6 +56,8 @@ flutter:
     - assets/i18n/en.json
     - assets/i18n/tt.json
     - assets/i18n/ru.json
+    - assets/partners/minmol.jpeg
+    - assets/partners/tatfor.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

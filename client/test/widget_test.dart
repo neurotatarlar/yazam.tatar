@@ -15,7 +15,7 @@ import 'package:yaz_tatar/models.dart';
 import 'package:yaz_tatar/settings_store.dart';
 
 void main() {
-  testWidgets('App renders header', (tester) async {
+  testWidgets('App renders workspace frame', (tester) async {
     final localizer = Localizer();
     final appState = AppState(
       config: const AppConfig(
@@ -35,6 +35,7 @@ void main() {
     );
 
     await tester.pumpWidget(MyApp(appState: appState));
-    expect(find.text('Test App'), findsOneWidget);
+    expect(find.text('nav.workspace'), findsOneWidget);
+    expect(find.text('panel.flow'), findsOneWidget);
   });
 }

@@ -65,6 +65,11 @@ void main() {
   });
 
   testWidgets('Feed renders history card', (tester) async {
+    tester.view.physicalSize = const Size(1600, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final history = [
       HistoryItem(
         id: '1',
@@ -75,12 +80,12 @@ void main() {
         requestId: 'rid',
       ),
     ];
-    final state = _buildState(history: history);
+    final state = _buildState(history: history)..correctedText = 'fixed';
 
     await tester.pumpWidget(MyApp(appState: state));
 
     expect(find.text('orig'), findsOneWidget);
-    expect(find.text('fixed'), findsOneWidget);
+    expect(find.text('fixed'), findsWidgets);
   });
 
   testWidgets('Send button streams corrected text', (tester) async {
@@ -96,7 +101,7 @@ void main() {
 
     await tester.pumpWidget(MyApp(appState: state));
     await tester.enterText(find.byType(TextField), 'hello');
-    await tester.tap(find.byIcon(Icons.arrow_upward));
+    await tester.tap(find.byIcon(Icons.auto_fix_high));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 10));
 
@@ -109,7 +114,7 @@ void main() {
     await tester.pumpWidget(MyApp(appState: state));
     await tester.enterText(find.byType(TextField), 'hello');
     await tester.pump();
-    await tester.tap(find.byIcon(Icons.arrow_upward));
+    await tester.tap(find.byIcon(Icons.auto_fix_high));
     await tester.pump();
 
     expect(state.errorMessage?.isNotEmpty ?? false, isTrue);
@@ -126,10 +131,10 @@ void main() {
         requestId: 'rid',
       ),
     ];
-    final state = _buildState(history: history);
+    final state = _buildState(history: history)..correctedText = 'copied';
 
     await tester.pumpWidget(MyApp(appState: state));
-    await tester.tap(find.byTooltip('Copy').first);
+    await tester.tap(find.byTooltip('actions.copy').first);
     await tester.pump();
     expect(find.text('actions.copied'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 1000));
@@ -163,7 +168,7 @@ void main() {
         requestId: 'rid',
       ),
     ];
-    final state = _buildState(history: history);
+    final state = _buildState(history: history)..correctedText = 'fixed';
 
     await tester.pumpWidget(MyApp(appState: state));
     expect(find.byIcon(Icons.thumb_up_alt_outlined), findsOneWidget);
@@ -193,7 +198,7 @@ void main() {
         requestId: 'rid',
       ),
     ];
-    final state = _buildState(history: history);
+    final state = _buildState(history: history)..correctedText = 'fixed';
 
     await tester.pumpWidget(MyApp(appState: state));
     await tester.tap(find.text('actions.reportProblem'));

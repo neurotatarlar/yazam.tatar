@@ -256,7 +256,6 @@ class AppState extends ChangeNotifier {
     activeTimestamp = resetTimestamp
         ? DateTime.now()
         : (activeTimestamp ?? DateTime.now());
-    originalText = resetTimestamp ? '' : originalText;
     correctedText = '';
     requestId = null;
     statusText = t('status.correcting');
@@ -344,9 +343,10 @@ class AppState extends ChangeNotifier {
       _loadedPersisted = math.min(_loadedPersisted + 1, total);
       hasMoreHistory = history.length < total;
     }
-    activeOriginal = '';
+    activeOriginal = item.original;
     activeTimestamp = null;
-    correctedText = '';
+    // Preserve the latest correction in the output pane until next run.
+    correctedText = item.corrected;
     activeFeedback = FeedbackChoice.none;
     notifyListeners();
   }

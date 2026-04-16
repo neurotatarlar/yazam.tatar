@@ -1,47 +1,34 @@
-// Flutter app entrypoint and primary chat-style UI.
-//
-// This module wires theming, keyboard shortcuts, split-panel behavior,
-// and deferred loading of bottom-sheet tools used by the home screen.
+// Main Flutter UI for the Tatar GEC client.
 import 'dart:async';
-import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'app_state.dart';
 import 'sheets/history_sheet.dart' deferred as history_sheet;
 import 'sheets/report_sheet.dart' deferred as report_sheet;
 import 'sheets/settings_sheet.dart' deferred as settings_sheet;
 
-const _seedColor = Color(0xFF4C6A5C);
-const _surfaceLight = Color(0xFFFBFAF7);
-const _canvasLight = Color(0xFFF1EEE7);
-const _mutedLight = Color(0xFF8A8578);
-const _borderLight = Color(0xFFE2DDD3);
-const _originalLight = Color(0xFFF6F4EE);
-const _correctedLight = Color(0xFFEFF4EF);
+const _brandColor = Color(0xFF4F46E5);
+const _bgLight = Color(0xFFF8FAFC);
+const _surfaceLight = Color(0xFFFFFFFF);
+const _textLight = Color(0xFF0F172A);
+const _mutedLight = Color(0xFF64748B);
+const _borderLight = Color(0xFFE2E8F0);
 
-const _surfaceDark = Color(0xFF1C1F1C);
-const _canvasDark = Color(0xFF121412);
-const _borderDark = Color(0xFF2C322D);
-const _originalDark = Color(0xFF1D201E);
-const _correctedDark = Color(0xFF1F2A23);
+const _bgDark = Color(0xFF0F172A);
+const _surfaceDark = Color(0xFF131B2E);
+const _textDark = Color(0xFFF8FAFC);
+const _mutedDark = Color(0xFF94A3B8);
+const _borderDark = Color(0xFF334155);
 
-/// Computes side padding that keeps content centered on wide screens.
-double _sidePadding(BuildContext context) {
-  final width = MediaQuery.of(context).size.width;
-  if (width <= 900) {
-    return 20;
-  }
-  return (width - 900) / 2;
-}
+const _sidebarWidth = 252.0;
+const _topBarHeight = 64.0;
 
-/// Keyboard intent to focus the composer input.
-class _FocusComposerIntent extends Intent {
-  const _FocusComposerIntent();
-}
+const _tbankDonationUrl = 'https://www.tbank.ru/cf/5DeXHs3nnOy';
+const _revolutDonationUrl = 'https://revolut.me/gaydmi';
 
 /// App entry point that boots configuration and state.
 Future<void> main() async {
@@ -66,20 +53,8 @@ class MyApp extends StatelessWidget {
             title: state.config.appName,
             debugShowCheckedModeBanner: false,
             themeMode: state.settings.themeMode,
-            theme: _buildTheme(state, Brightness.light),
-            darkTheme: _buildTheme(state, Brightness.dark),
-            builder: (context, child) {
-              final media = MediaQuery.of(context);
-              final baseScale = media.textScaler.scale(1);
-              return MediaQuery(
-                data: media.copyWith(
-                  textScaler: TextScaler.linear(
-                    baseScale * state.settings.fontScale,
-                  ),
-                ),
-                child: child ?? const SizedBox.shrink(),
-              );
-            },
+            theme: _buildTheme(Brightness.light),
+            darkTheme: _buildTheme(Brightness.dark),
             home: const HomePage(),
           );
         },
@@ -87,63 +62,60 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  /// Builds the light/dark theme palette from app settings.
-  ThemeData _buildTheme(AppState state, Brightness brightness) {
-    final base = ThemeData(
+  ThemeData _buildTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final scheme = ColorScheme.fromSeed(
+      seedColor: _brandColor,
       brightness: brightness,
+    );
+
+    return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: _seedColor,
-        brightness: brightness,
-      ),
-      scaffoldBackgroundColor: brightness == Brightness.dark
-          ? _canvasDark
-          : _canvasLight,
-      cardColor: brightness == Brightness.dark ? _surfaceDark : _surfaceLight,
-      dividerColor: brightness == Brightness.dark ? _borderDark : _borderLight,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: isDark ? _bgDark : _bgLight,
+      cardColor: isDark ? _surfaceDark : _surfaceLight,
+      dividerColor: isDark ? _borderDark : _borderLight,
+      textTheme:
+          ThemeData(
+            brightness: brightness,
+          ).textTheme.apply(
+            fontFamily: 'Inter',
+            fontFamilyFallback: const [
+              'Manrope',
+              'Noto Sans',
+              'Noto Sans UI',
+              'Segoe UI',
+              'Roboto',
+              'Arial',
+              'sans-serif',
+            ],
+            bodyColor: isDark ? _textDark : _textLight,
+            displayColor: isDark ? _textDark : _textLight,
+          ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: brightness == Brightness.dark ? _surfaceDark : _surfaceLight,
+        fillColor: isDark ? _surfaceDark : _surfaceLight,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: brightness == Brightness.dark ? _borderDark : _borderLight,
-          ),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: isDark ? _borderDark : _borderLight),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: brightness == Brightness.dark ? _borderDark : _borderLight,
-          ),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: isDark ? _borderDark : _borderLight),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: _seedColor, width: 1.2),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: _brandColor, width: 1.4),
         ),
       ),
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
       ),
     );
-
-    final textTheme = base.textTheme.apply(
-      fontFamily: kIsWeb ? 'system-ui' : null,
-      fontFamilyFallback: const [
-        'Noto Sans',
-        'Noto Sans UI',
-        'Segoe UI',
-        'Roboto',
-        'Helvetica Neue',
-        'Arial',
-        'sans-serif',
-      ],
-    );
-
-    return base.copyWith(textTheme: textTheme);
   }
 }
 
-/// Home screen that hosts the chat-style UI.
+/// Main workspace page.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -151,39 +123,25 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-/// State controller for the home screen interactions.
 class _HomePageState extends State<HomePage> {
   final TextEditingController _inputController = TextEditingController();
-  final ScrollController _feedController = ScrollController();
   final FocusNode _inputFocusNode = FocusNode();
-  DateTime _lastInteraction = DateTime.fromMillisecondsSinceEpoch(0);
-  bool _allowBlur = false;
-  bool _isFillingHistory = false;
 
   @override
   void initState() {
     super.initState();
-    _feedController.addListener(_handleScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         unawaited(context.read<AppState>().hydrate());
       }
-      _scrollToBottom();
-      unawaited(_fillHistoryToViewport());
-      _focusComposer();
+      _inputFocusNode.requestFocus();
     });
-    _inputFocusNode.addListener(_handleInputFocusChange);
   }
 
   @override
   void dispose() {
     _inputController.dispose();
-    _feedController
-      ..removeListener(_handleScroll)
-      ..dispose();
-    _inputFocusNode
-      ..removeListener(_handleInputFocusChange)
-      ..dispose();
+    _inputFocusNode.dispose();
     super.dispose();
   }
 
@@ -192,266 +150,89 @@ class _HomePageState extends State<HomePage> {
     final state = context.watch<AppState>();
     _syncInputController(state);
 
-    return Listener(
-      onPointerDown: _handlePointerDown,
-      child: Shortcuts(
-        shortcuts: <LogicalKeySet, Intent>{
-          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyK):
-              const _FocusComposerIntent(),
-          LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyK):
-              const _FocusComposerIntent(),
-        },
-        child: Actions(
-          actions: {
-            _FocusComposerIntent: CallbackAction<_FocusComposerIntent>(
-              onInvoke: (_) {
-                _inputFocusNode.requestFocus();
-                return null;
-              },
-            ),
+    return Scaffold(
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 1100;
+            if (!isDesktop) {
+              return _CompactLayout(
+                state: state,
+                inputController: _inputController,
+                inputFocusNode: _inputFocusNode,
+                onOpenHistory: () => _openHistory(context, state),
+                onOpenSettings: () => _openSettings(context, state),
+                onOpenReport: () => _openReportSheet(context, state),
+                onOpenSupport: (url) => _openExternal(context, state, url),
+              );
+            }
+            return _DesktopLayout(
+              state: state,
+              inputController: _inputController,
+              inputFocusNode: _inputFocusNode,
+              width: constraints.maxWidth,
+              onOpenHistory: () => _openHistory(context, state),
+              onOpenSettings: () => _openSettings(context, state),
+              onOpenReport: () => _openReportSheet(context, state),
+              onOpenSupport: (url) => _openExternal(context, state, url),
+            );
           },
-          child: Scaffold(
-            body: SafeArea(
-              child: Column(
-                children: [
-                  _TopBar(
-                    state: state,
-                    onLogoTap: () {
-                      _scrollToBottom();
-                      _focusComposer();
-                    },
-                  ),
-                  Expanded(
-                    child: _FeedList(state: state, controller: _feedController),
-                  ),
-                  _Composer(
-                    state: state,
-                    controller: _inputController,
-                    focusNode: _inputFocusNode,
-                    onIntentionalBlur: _markIntentionalBlur,
-                  ),
-                  _FooterActions(state: state),
-                ],
-              ),
-            ),
-          ),
         ),
       ),
     );
   }
 
-  /// Keep the text controller aligned with app state updates.
   void _syncInputController(AppState state) {
-    if (_inputController.text != state.originalText) {
-      _inputController.text = state.originalText;
-      _inputController.selection = TextSelection.fromPosition(
-        TextPosition(offset: _inputController.text.length),
-      );
-    }
-  }
-
-  /// Jump the feed list to the newest item.
-  void _scrollToBottom() {
-    if (!_feedController.hasClients) {
+    if (_inputController.text == state.originalText) {
       return;
     }
-    _feedController.jumpTo(_feedController.position.minScrollExtent);
-  }
-
-  /// Request focus for the input field when nothing else is focused.
-  void _focusComposer() {
-    if (_inputFocusNode.hasFocus) {
-      return;
-    }
-    if (FocusManager.instance.primaryFocus != null) {
-      return;
-    }
-    _inputFocusNode.requestFocus();
-  }
-
-  /// Load more history when the user approaches the end of the list.
-  void _handleScroll() {
-    if (!_feedController.hasClients) {
-      return;
-    }
-    final position = _feedController.position;
-    if (position.maxScrollExtent == 0) {
-      return;
-    }
-    if (position.pixels >= position.maxScrollExtent - 120) {
-      final state = context.read<AppState>();
-      if (!state.isHistoryLoading && state.hasMoreHistory) {
-        unawaited(
-          state.loadMoreHistory().then((loaded) {
-            if (loaded) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  unawaited(_fillHistoryToViewport());
-                }
-              });
-            }
-          }),
-        );
-      }
-    }
-  }
-
-  /// Ensure enough history items exist to fill the visible area.
-  Future<void> _fillHistoryToViewport() async {
-    if (_isFillingHistory) {
-      return;
-    }
-    _isFillingHistory = true;
-    final state = context.read<AppState>();
-    while (mounted) {
-      if (!_feedController.hasClients) {
-        break;
-      }
-      if (state.isHistoryLoading || !state.hasMoreHistory) {
-        break;
-      }
-      final maxExtent = _feedController.position.maxScrollExtent;
-      if (maxExtent > 80) {
-        break;
-      }
-      final loaded = await state.loadMoreHistory();
-      if (!mounted) {
-        break;
-      }
-      if (!loaded) {
-        break;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 16));
-      if (!mounted) {
-        break;
-      }
-    }
-    _isFillingHistory = false;
-  }
-
-  /// Track pointer interactions to avoid fighting intentional blurs.
-  void _handlePointerDown(PointerDownEvent event) {
-    _lastInteraction = DateTime.now();
-    _allowBlur = true;
-  }
-
-  /// Mark that the user explicitly unfocused the composer.
-  void _markIntentionalBlur() {
-    _lastInteraction = DateTime.now();
-    _allowBlur = true;
-  }
-
-  /// Restore focus unless the user just interacted elsewhere.
-  void _handleInputFocusChange() {
-    if (_inputFocusNode.hasFocus) {
-      _allowBlur = false;
-      return;
-    }
-    final sinceInteraction = DateTime.now()
-        .difference(_lastInteraction)
-        .inMilliseconds;
-    if (_allowBlur && sinceInteraction < 800) {
-      _allowBlur = false;
-      return;
-    }
-    _restoreInputFocus();
-  }
-
-  /// Re-focus the composer after a short delay.
-  void _restoreInputFocus() {
-    Future<void>.delayed(const Duration(milliseconds: 80), () {
-      if (!mounted) {
-        return;
-      }
-      if (_inputFocusNode.hasFocus) {
-        return;
-      }
-      _inputFocusNode.requestFocus();
-    });
-  }
-}
-
-/// Header row with language selector and actions.
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.state, this.onLogoTap});
-
-  final AppState state;
-  final VoidCallback? onLogoTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: _sidePadding(context),
-        vertical: 12,
-      ),
-      child: Row(
-        children: [
-          _LogoButton(title: state.config.appName, onTap: onLogoTap),
-          const Spacer(),
-          DropdownButton<String>(
-            value: state.settings.language,
-            underline: const SizedBox.shrink(),
-            focusColor: Colors.transparent,
-            items: [
-              DropdownMenuItem(
-                value: 'en',
-                child: Text(state.t('language.en')),
-              ),
-              DropdownMenuItem(
-                value: 'tt',
-                child: Text(state.t('language.tt')),
-              ),
-              DropdownMenuItem(
-                value: 'ru',
-                child: Text(state.t('language.ru')),
-              ),
-            ],
-            onChanged: (value) {
-              if (value == null) return;
-              unawaited(state.setLanguage(value));
-              FocusManager.instance.primaryFocus?.unfocus();
-            },
-          ),
-          const SizedBox(width: 8),
-          TextButton(
-            onPressed: () => _openHistory(context, state),
-            child: Text(state.t('history.title')),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => _openSettings(context, state),
-          ),
-        ],
-      ),
+    _inputController.text = state.originalText;
+    _inputController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _inputController.text.length),
     );
   }
 
-  /// Open history sheet dialog or bottom sheet depending on screen size.
   Future<void> _openHistory(BuildContext context, AppState state) async {
     await history_sheet.loadLibrary();
     if (!context.mounted) {
       return;
     }
-    final isMobile = MediaQuery.of(context).size.width < 900;
-    if (isMobile) {
-      await showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        builder: (_) => history_sheet.HistorySheet(state: state),
-      );
-    } else {
+    final isDesktop = MediaQuery.of(context).size.width >= 1100;
+    if (isDesktop) {
       await showDialog<void>(
         context: context,
-        builder: (_) => Dialog(child: history_sheet.HistorySheet(state: state)),
+        builder: (_) => Dialog(
+          child: SizedBox(
+            width: 820,
+            child: history_sheet.HistorySheet(state: state),
+          ),
+        ),
       );
+      return;
     }
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => history_sheet.HistorySheet(state: state),
+    );
   }
 
-  /// Open settings sheet as a modal bottom sheet.
   Future<void> _openSettings(BuildContext context, AppState state) async {
     await settings_sheet.loadLibrary();
     if (!context.mounted) {
+      return;
+    }
+    final isDesktop = MediaQuery.of(context).size.width >= 1100;
+    if (isDesktop) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => Dialog(
+          child: SizedBox(
+            width: 560,
+            child: settings_sheet.SettingsSheet(state: state),
+          ),
+        ),
+      );
       return;
     }
     await showModalBottomSheet<void>(
@@ -460,814 +241,1031 @@ class _TopBar extends StatelessWidget {
       builder: (_) => settings_sheet.SettingsSheet(state: state),
     );
   }
+
+  Future<void> _openReportSheet(BuildContext context, AppState state) async {
+    await report_sheet.loadLibrary();
+    if (!context.mounted) {
+      return;
+    }
+    final isDesktop = MediaQuery.of(context).size.width >= 1100;
+    if (isDesktop) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => Dialog(
+          child: SizedBox(
+            width: 620,
+            child: report_sheet.ReportSheet(state: state),
+          ),
+        ),
+      );
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => report_sheet.ReportSheet(state: state),
+    );
+  }
+
+  Future<void> _openExternal(
+    BuildContext context,
+    AppState state,
+    String url,
+  ) async {
+    final ok = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(state.t('errors.openLink'))),
+      );
+    }
+  }
 }
 
-/// Scrollable feed of current and historical corrections.
-class _FeedList extends StatelessWidget {
-  const _FeedList({required this.state, required this.controller});
+class _DesktopLayout extends StatelessWidget {
+  const _DesktopLayout({
+    required this.state,
+    required this.inputController,
+    required this.inputFocusNode,
+    required this.width,
+    required this.onOpenHistory,
+    required this.onOpenSettings,
+    required this.onOpenReport,
+    required this.onOpenSupport,
+  });
 
   final AppState state;
-  final ScrollController controller;
+  final TextEditingController inputController;
+  final FocusNode inputFocusNode;
+  final double width;
+  final VoidCallback onOpenHistory;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onOpenReport;
+  final Future<void> Function(String url) onOpenSupport;
 
   @override
   Widget build(BuildContext context) {
-    final hasActive =
-        state.activeOriginal.isNotEmpty ||
-        state.isStreaming ||
-        state.correctedText.isNotEmpty;
-    final itemCount = state.history.length + (hasActive ? 1 : 0);
+    final showHistoryRail = width >= 1480;
 
-    if (itemCount == 0) {
-      return ListView(
-        controller: controller,
-        padding: EdgeInsets.fromLTRB(
-          _sidePadding(context),
-          24,
-          _sidePadding(context),
-          24,
+    return Row(
+      children: [
+        _Sidebar(
+          state: state,
+          onOpenHistory: onOpenHistory,
+          onOpenSettings: onOpenSettings,
+          onOpenSupport: onOpenSupport,
         ),
-        children: [
-          _EmptyState(state: state),
-          if (state.errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: _InlineError(message: state.errorMessage!),
+        Expanded(
+          child: Column(
+            children: [
+              _TopBar(state: state),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: _WorkspacePanel(
+                                state: state,
+                                inputController: inputController,
+                                inputFocusNode: inputFocusNode,
+                                onOpenReport: onOpenReport,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _ActionBar(
+                              state: state,
+                              inputController: inputController,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (showHistoryRail) ...[
+                        const SizedBox(width: 20),
+                        SizedBox(
+                          width: 320,
+                          child: _HistoryRail(state: state),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactLayout extends StatelessWidget {
+  const _CompactLayout({
+    required this.state,
+    required this.inputController,
+    required this.inputFocusNode,
+    required this.onOpenHistory,
+    required this.onOpenSettings,
+    required this.onOpenReport,
+    required this.onOpenSupport,
+  });
+
+  final AppState state;
+  final TextEditingController inputController;
+  final FocusNode inputFocusNode;
+  final VoidCallback onOpenHistory;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onOpenReport;
+  final Future<void> Function(String url) onOpenSupport;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _TopBar(state: state),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                Expanded(
+                  child: _WorkspacePanel(
+                    state: state,
+                    inputController: inputController,
+                    inputFocusNode: inputFocusNode,
+                    onOpenReport: onOpenReport,
+                    forceVertical: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _ActionBar(state: state, inputController: inputController),
+              ],
             ),
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onOpenHistory,
+                    icon: const Icon(Icons.history),
+                    label: Text(state.t('history.title')),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onOpenSettings,
+                    icon: const Icon(Icons.settings),
+                    label: Text(state.t('settings.title')),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  onPressed: () => unawaited(onOpenSupport(_tbankDonationUrl)),
+                  icon: const Icon(Icons.favorite),
+                  tooltip: state.t('nav.support'),
+                ),
+                const SizedBox(width: 6),
+                IconButton.outlined(
+                  onPressed: () =>
+                      unawaited(onOpenSupport(_revolutDonationUrl)),
+                  icon: const Icon(Icons.currency_exchange),
+                  tooltip: state.t('nav.support'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Sidebar extends StatelessWidget {
+  const _Sidebar({
+    required this.state,
+    required this.onOpenHistory,
+    required this.onOpenSettings,
+    required this.onOpenSupport,
+  });
+
+  final AppState state;
+  final VoidCallback onOpenHistory;
+  final VoidCallback onOpenSettings;
+  final Future<void> Function(String url) onOpenSupport;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? _surfaceDark : _surfaceLight;
+    final border = isDark ? _borderDark : _borderLight;
+    final muted = isDark ? _mutedDark : _mutedLight;
+
+    return Container(
+      width: _sidebarWidth,
+      decoration: BoxDecoration(
+        color: surface,
+        border: Border(right: BorderSide(color: border)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: _brandColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.edit_note, color: Colors.white),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    state.config.appName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          _SidebarItem(
+            icon: Icons.edit_note,
+            label: state.t('nav.workspace'),
+            selected: true,
+            onTap: () {},
+          ),
+          _SidebarItem(
+            icon: Icons.history,
+            label: state.t('history.title'),
+            onTap: onOpenHistory,
+          ),
+          _SidebarItem(
+            icon: Icons.settings,
+            label: state.t('settings.title'),
+            onTap: onOpenSettings,
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: _brandColor.withValues(alpha: 0.08),
+                border: Border.all(color: _brandColor.withValues(alpha: 0.25)),
+              ),
+              child: Column(
+                children: [
+                  ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.favorite, color: _brandColor),
+                    title: Text(
+                      state.t('support.tbank'),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    onTap: () => unawaited(onOpenSupport(_tbankDonationUrl)),
+                  ),
+                  Divider(height: 1, color: _brandColor.withValues(alpha: 0.2)),
+                  ListTile(
+                    dense: true,
+                    leading: const Icon(
+                      Icons.currency_exchange,
+                      color: _brandColor,
+                    ),
+                    title: Text(
+                      state.t('support.revolut'),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    onTap: () => unawaited(onOpenSupport(_revolutDonationUrl)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  state.t('partners.title'),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: muted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/partners/minmol.jpeg',
+                    fit: BoxFit.contain,
+                    height: 50,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/partners/tatfor.jpeg',
+                    fit: BoxFit.contain,
+                    height: 50,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _SidebarItem extends StatelessWidget {
+  const _SidebarItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected
+        ? _brandColor.withValues(alpha: 0.12)
+        : Colors.transparent;
+    final fg = selected
+        ? _brandColor
+        : Theme.of(context).textTheme.bodyMedium?.color;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Row(
+            children: [
+              Icon(icon, color: fg),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: fg,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final border = isDark ? _borderDark : _borderLight;
+    final muted = isDark ? _mutedDark : _mutedLight;
+
+    return Container(
+      height: _topBarHeight,
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: border)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          Text(
+            state.t('nav.workspace'),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            state.t('panel.flow'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: muted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          _LanguagePill(state: state),
+        ],
+      ),
+    );
+  }
+}
+
+class _LanguagePill extends StatelessWidget {
+  const _LanguagePill({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final border = isDark ? _borderDark : _borderLight;
+
+    Widget item(String code, String label) {
+      final selected = state.settings.language == code;
+      return Expanded(
+        child: InkWell(
+          onTap: () => unawaited(state.setLanguage(code)),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              color: selected ? _brandColor.withValues(alpha: 0.12) : null,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: selected ? _brandColor : null,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
       );
     }
 
-    return ListView.builder(
-      controller: controller,
-      reverse: true,
-      padding: EdgeInsets.fromLTRB(
-        _sidePadding(context),
-        16,
-        _sidePadding(context),
-        16,
+    return Container(
+      width: 210,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: border),
       ),
-      itemCount: itemCount,
-      itemBuilder: (context, index) {
-        final showDivider = index < itemCount - 1;
-        if (hasActive && index == 0) {
-          return Column(
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        children: [
+          item('tt', 'TT'),
+          item('en', 'EN'),
+          item('ru', 'RU'),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkspacePanel extends StatelessWidget {
+  const _WorkspacePanel({
+    required this.state,
+    required this.inputController,
+    required this.inputFocusNode,
+    required this.onOpenReport,
+    this.forceVertical = false,
+  });
+
+  final AppState state;
+  final TextEditingController inputController;
+  final FocusNode inputFocusNode;
+  final VoidCallback onOpenReport;
+  final bool forceVertical;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final border = isDark ? _borderDark : _borderLight;
+    final muted = isDark ? _mutedDark : _mutedLight;
+
+    final correctionText = state.correctedText;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontal = !forceVertical && constraints.maxWidth >= 920;
+        final divider = Container(width: 1, color: border);
+
+        final originalPane = Container(
+          padding: const EdgeInsets.all(24),
+          color: isDark ? _surfaceDark : _surfaceLight,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _ChatPair(
-                original: state.activeOriginal,
-                corrected: state.correctedText,
-                isStreaming: state.isStreaming,
-                errorMessage: state.errorMessage,
-                timestamp: state.activeTimestamp,
-                feedbackChoice: state.activeFeedback,
-                onFeedbackChange: state.toggleActiveFeedback,
-                onReport: () => _openReportSheet(context, state),
-                reportLabel: state.t('actions.reportProblem'),
-                onCopyOriginal: state.activeOriginal.isNotEmpty
-                    ? (anchor) =>
-                          _copyToClipboard(anchor, state, state.activeOriginal)
-                    : null,
-                onCopyCorrected:
-                    state.correctedText.isNotEmpty || state.errorMessage != null
-                    ? (anchor) => _copyToClipboard(
-                        anchor,
-                        state,
-                        state.correctedText.isNotEmpty
-                            ? state.correctedText
-                            : (state.errorMessage ?? ''),
-                      )
-                    : null,
-                onRetry: state.errorMessage != null ? state.retry : null,
-                retryLabel: state.t('actions.retry'),
-                wasCanceled: state.wasCanceled,
-                stoppedLabel: state.t('actions.stopped'),
-                showFeedback: !state.isStreaming,
+              Text(
+                state.t('panel.original'),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: muted,
+                  letterSpacing: 1.1,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              if (showDivider)
-                _ChatDivider(color: Theme.of(context).dividerColor),
+              const SizedBox(height: 12),
+              Expanded(
+                child: TextField(
+                  controller: inputController,
+                  focusNode: inputFocusNode,
+                  onChanged: state.updateOriginalText,
+                  expands: true,
+                  maxLines: null,
+                  decoration: InputDecoration(
+                    hintText: state.t('input.placeholder'),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    height: 1.55,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
             ],
-          );
-        }
-        final item = state.history[index - (hasActive ? 1 : 0)];
-        return Column(
-          children: [
-            _ChatPair(
-              original: item.original,
-              corrected: item.corrected,
-              timestamp: item.timestamp,
-              stoppedLabel: state.t('actions.stopped'),
-              showFeedback: true,
-              feedbackChoice: state.feedbackForItem(item),
-              onFeedbackChange: (choice) {
-                state.toggleHistoryFeedback(item.id, choice);
-              },
-              onReport: () => _openReportSheet(context, state),
-              reportLabel: state.t('actions.reportProblem'),
-              onCopyOriginal: (anchor) =>
-                  _copyToClipboard(anchor, state, item.original),
-              onCopyCorrected: (anchor) =>
-                  _copyToClipboard(anchor, state, item.corrected),
-            ),
-            if (showDivider)
-              _ChatDivider(color: Theme.of(context).dividerColor),
-          ],
+          ),
+        );
+
+        final correctionPane = Container(
+          padding: const EdgeInsets.all(24),
+          color: isDark
+              ? _surfaceDark.withValues(alpha: 0.92)
+              : _surfaceLight.withValues(alpha: 0.92),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    state.t('panel.corrected'),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: _brandColor,
+                      letterSpacing: 1.1,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (state.isStreaming)
+                    Row(
+                      children: [
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          state.t('status.correcting'),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: muted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: _CorrectionBody(
+                  state: state,
+                  correctionText: correctionText,
+                ),
+              ),
+              if (!state.isStreaming && correctionText.isNotEmpty)
+                _FeedbackRow(state: state, onOpenReport: onOpenReport),
+            ],
+          ),
+        );
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                blurRadius: 16,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: horizontal
+                ? Row(
+                    children: [
+                      Expanded(child: originalPane),
+                      divider,
+                      Expanded(child: correctionPane),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      SizedBox(
+                        height: constraints.maxHeight * 0.48,
+                        child: originalPane,
+                      ),
+                      Container(height: 1, color: border),
+                      Expanded(child: correctionPane),
+                    ],
+                  ),
+          ),
         );
       },
     );
   }
 }
 
-/// Placeholder content when no history exists.
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.state});
+class _CorrectionBody extends StatelessWidget {
+  const _CorrectionBody({required this.state, required this.correctionText});
 
   final AppState state;
+  final String correctionText;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final muted = isDark ? Colors.grey.shade400 : _mutedLight;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            state.t('empty.title'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            state.t('empty.body'),
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: muted),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// App logo and title button.
-class _LogoButton extends StatelessWidget {
-  const _LogoButton({required this.title, this.onTap});
-
-  final String title;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final textStyle = theme.textTheme.titleLarge?.copyWith(
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.2,
-    );
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: scheme.primary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: scheme.primary.withValues(alpha: 0.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                'Ә',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: scheme.onPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(title, style: textStyle),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Inline error banner for failed requests.
-class _InlineError extends StatelessWidget {
-  const _InlineError({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
-          const SizedBox(width: 8),
-          Expanded(child: Text(message)),
-        ],
-      ),
-    );
-  }
-}
-
-/// One pair of user + assistant messages.
-class _ChatPair extends StatelessWidget {
-  const _ChatPair({
-    required this.original,
-    required this.corrected,
-    this.isStreaming = false,
-    this.errorMessage,
-    this.wasCanceled = false,
-    this.stoppedLabel,
-    this.showFeedback = false,
-    this.feedbackChoice = FeedbackChoice.none,
-    this.onFeedbackChange,
-    this.onReport,
-    this.reportLabel,
-    this.timestamp,
-    this.onCopyOriginal,
-    this.onCopyCorrected,
-    this.onRetry,
-    this.retryLabel,
-  });
-
-  final String original;
-  final String corrected;
-  final bool isStreaming;
-  final String? errorMessage;
-  final bool wasCanceled;
-  final String? stoppedLabel;
-  final bool showFeedback;
-  final FeedbackChoice feedbackChoice;
-  final void Function(FeedbackChoice choice)? onFeedbackChange;
-  final VoidCallback? onReport;
-  final String? reportLabel;
-  final DateTime? timestamp;
-  final Future<void> Function(BuildContext)? onCopyOriginal;
-  final Future<void> Function(BuildContext)? onCopyCorrected;
-  final VoidCallback? onRetry;
-  final String? retryLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final showAssistant =
-        corrected.isNotEmpty ||
-        isStreaming ||
-        errorMessage != null ||
-        wasCanceled;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _MessageBubble(
-            text: original,
-            isUser: true,
-            timestamp: timestamp,
-            onCopy: onCopyOriginal,
-          ),
-          if (showAssistant) ...[
-            const SizedBox(height: 12),
-            _MessageBubble(
-              text: corrected.isNotEmpty ? corrected : (errorMessage ?? ''),
-              isUser: false,
-              isStreaming: isStreaming,
-              isError: errorMessage != null,
-              wasCanceled: wasCanceled,
-              stoppedLabel: stoppedLabel,
-              showFeedback: showFeedback,
-              feedbackChoice: feedbackChoice,
-              onFeedbackChange: onFeedbackChange,
-              onReport: onReport,
-              reportLabel: reportLabel,
-              timestamp: timestamp,
-              onCopy: onCopyCorrected,
-              onRetry: errorMessage != null ? onRetry : null,
-              retryLabel: retryLabel,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Divider used between chat pairs.
-class _ChatDivider extends StatelessWidget {
-  const _ChatDivider({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Divider(
-        height: 1,
-        thickness: 1,
-        color: color.withValues(alpha: 0.35),
-        indent: 80,
-        endIndent: 80,
-      ),
-    );
-  }
-}
-
-/// Single chat bubble with metadata row.
-class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({
-    required this.text,
-    required this.isUser,
-    this.isStreaming = false,
-    this.isError = false,
-    this.wasCanceled = false,
-    this.stoppedLabel,
-    this.showFeedback = false,
-    this.feedbackChoice = FeedbackChoice.none,
-    this.onFeedbackChange,
-    this.onReport,
-    this.reportLabel,
-    this.timestamp,
-    this.onCopy,
-    this.onRetry,
-    this.retryLabel,
-  });
-
-  final String text;
-  final bool isUser;
-  final bool isStreaming;
-  final bool isError;
-  final bool wasCanceled;
-  final String? stoppedLabel;
-  final bool showFeedback;
-  final FeedbackChoice feedbackChoice;
-  final void Function(FeedbackChoice choice)? onFeedbackChange;
-  final VoidCallback? onReport;
-  final String? reportLabel;
-  final DateTime? timestamp;
-  final Future<void> Function(BuildContext)? onCopy;
-  final VoidCallback? onRetry;
-  final String? retryLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bubbleColor = isError
-        ? Theme.of(context).colorScheme.errorContainer
-        : isUser
-        ? (isDark ? _originalDark : _originalLight)
-        : (isDark ? _correctedDark : _correctedLight);
-    final textColor = isError
-        ? Theme.of(context).colorScheme.onErrorContainer
-        : null;
-    final metaColor = isDark ? Colors.grey.shade400 : _mutedLight;
-    final showTyping = isStreaming && text.isEmpty && !isError;
-    final displayText = text.isNotEmpty ? text : '';
-
-    final showTimestamp = timestamp != null && isUser;
-    final showFeedbackRow = !isUser && !isStreaming && showFeedback;
-    final showUp = feedbackChoice != FeedbackChoice.down;
-    final showDown = feedbackChoice != FeedbackChoice.up;
-    final isUpSelected = feedbackChoice == FeedbackChoice.up;
-    final isDownSelected = feedbackChoice == FeedbackChoice.down;
-    final showMetaRow = showTimestamp || onCopy != null || showFeedbackRow;
-
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Column(
-          crossAxisAlignment: isUser
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: bubbleColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.6),
-                ),
-              ),
-              child: showTyping
-                  ? _TypingIndicator(color: metaColor)
-                  : SelectableText(
-                      displayText,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        height: 1.5,
-                        color: textColor,
-                      ),
-                    ),
-            ),
-            if (showMetaRow)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (showTimestamp)
-                      Text(
-                        _formatTimestamp(timestamp!),
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: metaColor),
-                      ),
-                    if (showTimestamp && onCopy != null)
-                      const SizedBox(width: 6),
-                    if (onCopy != null)
-                      Builder(
-                        builder: (iconContext) => IconButton(
-                          onPressed: () async => onCopy!(iconContext),
-                          icon: _CopyGlyph(
-                            color: metaColor,
-                            background: Theme.of(
-                              context,
-                            ).scaffoldBackgroundColor,
-                          ),
-                          tooltip: 'Copy',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 28,
-                            minHeight: 28,
-                          ),
-                          iconSize: 16,
-                          color: metaColor,
-                        ),
-                      ),
-                    if (showFeedbackRow) ...[
-                      if (onCopy != null || showTimestamp)
-                        const SizedBox(width: 6),
-                      if (showUp)
-                        IconButton(
-                          onPressed: onFeedbackChange == null
-                              ? null
-                              : () => onFeedbackChange!(FeedbackChoice.up),
-                          icon: Icon(
-                            isUpSelected
-                                ? Icons.thumb_up_alt
-                                : Icons.thumb_up_alt_outlined,
-                          ),
-                          iconSize: 18,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 28,
-                            minHeight: 28,
-                          ),
-                          color: isUpSelected
-                              ? Theme.of(context).colorScheme.primary
-                              : metaColor,
-                        ),
-                      if (showDown)
-                        IconButton(
-                          onPressed: onFeedbackChange == null
-                              ? null
-                              : () => onFeedbackChange!(FeedbackChoice.down),
-                          icon: Icon(
-                            isDownSelected
-                                ? Icons.thumb_down_alt
-                                : Icons.thumb_down_alt_outlined,
-                          ),
-                          iconSize: 18,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 28,
-                            minHeight: 28,
-                          ),
-                          color: isDownSelected
-                              ? Theme.of(context).colorScheme.primary
-                              : metaColor,
-                        ),
-                      if (onReport != null) ...[
-                        const SizedBox(width: 6),
-                        TextButton(
-                          onPressed: onReport,
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            minimumSize: const Size(0, 28),
-                          ),
-                          child: Text(
-                            reportLabel ?? '',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: metaColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ],
-                ),
-              ),
-            if (isError && onRetry != null)
-              Align(
-                alignment: isUser
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: onRetry,
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: Text(retryLabel ?? 'Retry'),
-                ),
-              ),
-            if (wasCanceled && !isStreaming)
-              Align(
-                alignment: isUser
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    stoppedLabel ?? 'Stopped',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: metaColor,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Animated typing indicator for streaming responses.
-class _TypingIndicator extends StatefulWidget {
-  const _TypingIndicator({required this.color});
-
-  final Color color;
-
-  @override
-  State<_TypingIndicator> createState() => _TypingIndicatorState();
-}
-
-/// Lightweight toast used for clipboard feedback.
-class _CopyToast extends StatelessWidget {
-  const _CopyToast({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final background = isDark ? const Color(0xFF2A2E2B) : Colors.white;
-    final border = isDark ? const Color(0xFF3B403C) : const Color(0xFFE0DAD0);
-    final textColor = isDark ? Colors.white : const Color(0xFF2D2D2D);
-
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
+          color: Theme.of(context).colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: Theme.of(context).colorScheme.onErrorContainer,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                state.errorMessage!,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: state.retry,
+              child: Text(state.t('actions.retry')),
             ),
           ],
         ),
-        child: Text(
-          message,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: textColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Custom painter-based copy glyph used in the toolbar.
-class _CopyGlyph extends StatelessWidget {
-  const _CopyGlyph({required this.color, required this.background});
-
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Transform(
-      alignment: Alignment.center,
-      transform: Matrix4.identity()..rotateY(math.pi),
-      child: CustomPaint(
-        size: const Size(19, 19),
-        painter: _CopyGlyphPainter(color, background),
-      ),
-    );
-  }
-}
-
-/// Draws the overlapping-square copy icon.
-class _CopyGlyphPainter extends CustomPainter {
-  _CopyGlyphPainter(this.color, this.background);
-
-  final Color color;
-  final Color background;
-
-  @override
-  /// Paint the two overlapping rounded rectangles.
-  void paint(Canvas canvas, Size size) {
-    final stroke = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final fill = Paint()
-      ..color = background
-      ..style = PaintingStyle.fill;
-    const backRect = Rect.fromLTWH(2.2, 2.2, 10.6, 10.6);
-    const frontRect = Rect.fromLTWH(6.2, 6.2, 10.6, 10.6);
-    final back = RRect.fromRectAndRadius(backRect, const Radius.circular(3.6));
-    final front = RRect.fromRectAndRadius(
-      frontRect,
-      const Radius.circular(3.6),
-    );
-    canvas
-      ..drawRRect(back, stroke)
-      ..drawRRect(front, fill)
-      ..drawRRect(front, stroke);
-  }
-
-  @override
-  /// Repaint when colors change.
-  bool shouldRepaint(covariant _CopyGlyphPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.background != background;
-  }
-}
-
-/// Animates the typing indicator dots.
-class _TypingIndicatorState extends State<_TypingIndicator>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final List<Animation<double>> _dotAnimations;
-
-  @override
-  /// Initialize the looping dot animations.
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    unawaited(_controller.repeat());
-    _dotAnimations = List.generate(3, (index) {
-      final start = index * 0.2;
-      final end = start + 0.6;
-      return CurvedAnimation(
-        parent: _controller,
-        curve: Interval(start, end, curve: Curves.easeInOut),
       );
-    });
+    }
+
+    if (state.isStreaming && correctionText.isEmpty) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          state.t('status.correcting'),
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+      );
+    }
+
+    if (correctionText.isNotEmpty) {
+      return SelectableText(
+        correctionText,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          height: 1.55,
+          fontSize: 18,
+        ),
+      );
+    }
+
+    return Text(
+      state.t('empty.title'),
+      style: Theme.of(
+        context,
+      ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).hintColor),
+    );
   }
+}
+
+class _FeedbackRow extends StatelessWidget {
+  const _FeedbackRow({required this.state, required this.onOpenReport});
+
+  final AppState state;
+  final VoidCallback onOpenReport;
 
   @override
-  /// Dispose of the animation controller.
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  /// Build the animated dot row.
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(3, (index) {
-        return FadeTransition(
-          opacity: _dotAnimations[index],
-          child: Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: widget.color,
-                shape: BoxShape.circle,
-              ),
-            ),
+    final feedback = state.activeFeedback;
+    final showUp = feedback != FeedbackChoice.down;
+    final showDown = feedback != FeedbackChoice.up;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 460;
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Row(
+            children: [
+              if (showUp)
+                IconButton(
+                  onPressed: () =>
+                      state.toggleActiveFeedback(FeedbackChoice.up),
+                  icon: Icon(
+                    feedback == FeedbackChoice.up
+                        ? Icons.thumb_up_alt
+                        : Icons.thumb_up_alt_outlined,
+                  ),
+                ),
+              if (showDown)
+                IconButton(
+                  onPressed: () =>
+                      state.toggleActiveFeedback(FeedbackChoice.down),
+                  icon: Icon(
+                    feedback == FeedbackChoice.down
+                        ? Icons.thumb_down_alt
+                        : Icons.thumb_down_alt_outlined,
+                  ),
+                ),
+              const Spacer(),
+              if (compact)
+                IconButton(
+                  onPressed: onOpenReport,
+                  icon: const Icon(Icons.flag_outlined),
+                  tooltip: state.t('actions.reportProblem'),
+                )
+              else
+                TextButton.icon(
+                  onPressed: onOpenReport,
+                  icon: const Icon(Icons.flag_outlined),
+                  label: Text(state.t('actions.reportProblem')),
+                ),
+            ],
           ),
         );
-      }),
+      },
     );
   }
 }
 
-/// Input row with composer and send/stop controls.
-class _Composer extends StatelessWidget {
-  const _Composer({
-    required this.state,
-    required this.controller,
-    required this.focusNode,
-    this.onIntentionalBlur,
-  });
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({required this.state, required this.inputController});
 
   final AppState state;
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final VoidCallback? onIntentionalBlur;
+  final TextEditingController inputController;
 
   @override
   Widget build(BuildContext context) {
-    final canSend = controller.text.trim().isNotEmpty;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        _sidePadding(context),
-        0,
-        _sidePadding(context),
-        12,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final border = isDark ? _borderDark : _borderLight;
+    final muted = isDark ? _mutedDark : _mutedLight;
+
+    final sourceText = inputController.text;
+    final correctionText = state.correctedText;
+    final words = _wordCount(sourceText);
+    final chars = sourceText.characters.length;
+
+    final canSubmit = sourceText.trim().isNotEmpty && !state.isStreaming;
+    final canCopy = correctionText.trim().isNotEmpty;
+    final canReplace = correctionText.trim().isNotEmpty;
+
+    final actionControls = [
+      if (state.isStreaming)
+        OutlinedButton.icon(
+          onPressed: state.stopStreaming,
+          icon: const Icon(Icons.stop_rounded),
+          label: Text(state.t('actions.stopped')),
+        )
+      else
+        FilledButton.icon(
+          onPressed: canSubmit ? state.submit : null,
+          icon: const Icon(Icons.auto_fix_high),
+          label: Text(state.t('actions.correctText')),
+        ),
+      const SizedBox(width: 8),
+      IconButton(
+        tooltip: state.t('actions.copy'),
+        onPressed: canCopy
+            ? () => _copyToClipboard(context, state, correctionText)
+            : null,
+        icon: const Icon(Icons.content_copy),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      IconButton(
+        onPressed: () {
+          inputController.clear();
+          state.updateOriginalText('');
+        },
+        icon: const Icon(Icons.delete_sweep),
+        tooltip: state.t('actions.clearOriginal'),
+      ),
+      IconButton(
+        onPressed: canReplace
+            ? () {
+                final next = correctionText;
+                inputController.text = next;
+                inputController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: next.length),
+                );
+                state.updateOriginalText(next);
+              }
+            : null,
+        icon: const Icon(Icons.swap_horiz),
+        tooltip: state.t('actions.replaceOriginal'),
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 900;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: border),
+            color: Theme.of(context).cardColor,
+          ),
+          child: compact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: actionControls),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          state.t('metrics.words', vars: {'count': '$words'}),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: muted,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        Text(
+                          state.t(
+                            'metrics.characters',
+                            vars: {'count': '$chars'},
+                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: muted,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    ...actionControls,
+                    const Spacer(),
+                    Text(
+                      state.t('metrics.words', vars: {'count': '$words'}),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: muted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Text(
+                      state.t('metrics.characters', vars: {'count': '$chars'}),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: muted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+        );
+      },
+    );
+  }
+}
+
+class _HistoryRail extends StatelessWidget {
+  const _HistoryRail({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final border = isDark ? _borderDark : _borderLight;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border),
+        color: Theme.of(context).cardColor,
+      ),
+      child: Column(
         children: [
-          Expanded(
-            child: Focus(
-              onKeyEvent: (_, event) {
-                if (event is KeyDownEvent &&
-                    event.logicalKey == LogicalKeyboardKey.escape) {
-                  onIntentionalBlur?.call();
-                  focusNode.unfocus();
-                  return KeyEventResult.handled;
-                }
-                if (event is KeyDownEvent &&
-                    event.logicalKey == LogicalKeyboardKey.enter &&
-                    !HardwareKeyboard.instance.isShiftPressed) {
-                  if (canSend) {
-                    unawaited(state.submit());
-                  }
-                  return KeyEventResult.handled;
-                }
-                return KeyEventResult.ignored;
-              },
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                autofocus: true,
-                minLines: 1,
-                maxLines: 6,
-                onChanged: state.updateOriginalText,
-                decoration: InputDecoration(
-                  hintText: state.t('input.placeholder'),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Text(
+                  state.t('history.title'),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
+                const Spacer(),
+                const Icon(Icons.history, size: 18),
+              ],
             ),
           ),
-          const SizedBox(width: 12),
-          SizedBox(
-            height: 48,
-            width: 48,
-            child: state.isStreaming
-                ? OutlinedButton(
-                    onPressed: state.stopStreaming,
-                    style: OutlinedButton.styleFrom(
-                      shape: const CircleBorder(),
-                      padding: EdgeInsets.zero,
+          Divider(height: 1, color: border),
+          Expanded(
+            child: state.history.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Text(state.t('history.empty')),
                     ),
-                    child: const Icon(Icons.stop_rounded),
                   )
-                : ElevatedButton(
-                    onPressed: canSend ? state.submit : null,
-                    style: ElevatedButton.styleFrom(
-                      shape: const CircleBorder(),
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: const Icon(Icons.arrow_upward),
+                : ListView.builder(
+                    itemCount: state.history.length,
+                    itemBuilder: (context, index) {
+                      final item = state.history[index];
+                      return InkWell(
+                        onTap: () => unawaited(state.loadHistoryItem(item)),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _formatTimestamp(item.timestamp),
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(color: _brandColor),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _shortPreview(item.original),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _shortPreview(item.corrected),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
           ),
         ],
@@ -1276,40 +1274,6 @@ class _Composer extends StatelessWidget {
   }
 }
 
-/// Footer area for transient status text.
-class _FooterActions extends StatelessWidget {
-  const _FooterActions({required this.state});
-
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final status = state.statusText;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final muted = isDark ? Colors.grey.shade400 : _mutedLight;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        _sidePadding(context),
-        0,
-        _sidePadding(context),
-        12,
-      ),
-      child: Row(
-        children: [
-          if (status.isNotEmpty)
-            Text(
-              status,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: muted),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Copy text to clipboard and show a toast.
 Future<void> _copyToClipboard(
   BuildContext context,
   AppState state,
@@ -1320,37 +1284,19 @@ Future<void> _copyToClipboard(
     if (!context.mounted) {
       return;
     }
-    _showCopyToast(context, state.t('actions.copied'));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(state.t('actions.copied'))),
+    );
   } on Object catch (_) {
     if (!context.mounted) {
       return;
     }
-    _showCopyToast(context, state.t('errors.copyFailed'));
-  }
-}
-
-/// Open the report problem sheet for the current request.
-Future<void> _openReportSheet(BuildContext context, AppState state) async {
-  await report_sheet.loadLibrary();
-  if (!context.mounted) {
-    return;
-  }
-  final isMobile = MediaQuery.of(context).size.width < 900;
-  if (isMobile) {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => report_sheet.ReportSheet(state: state),
-    );
-  } else {
-    await showDialog<void>(
-      context: context,
-      builder: (_) => Dialog(child: report_sheet.ReportSheet(state: state)),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(state.t('errors.copyFailed'))),
     );
   }
 }
 
-/// Format a timestamp as HH:mm.
 String _formatTimestamp(DateTime timestamp) {
   final local = timestamp.toLocal();
   final hour = local.hour.toString().padLeft(2, '0');
@@ -1358,42 +1304,18 @@ String _formatTimestamp(DateTime timestamp) {
   return '$hour:$minute';
 }
 
-/// Show a small toast above the tapped element.
-void _showCopyToast(BuildContext context, String message) {
-  final overlay = Overlay.of(context);
-  final renderBox = context.findRenderObject() as RenderBox?;
-  final overlayBox = overlay.context.findRenderObject() as RenderBox?;
-  if (renderBox == null || overlayBox == null) {
-    return;
+int _wordCount(String text) {
+  final trimmed = text.trim();
+  if (trimmed.isEmpty) {
+    return 0;
   }
+  return trimmed.split(RegExp(r'\s+')).length;
+}
 
-  final target = renderBox.localToGlobal(Offset.zero, ancestor: overlayBox);
-  const double toastWidth = 72;
-  const double toastHeight = 28;
-  const double toastPadding = 8;
-  const double toastGap = 6;
-  final left = math.max(
-    toastPadding,
-    math.min(
-      target.dx + renderBox.size.width / 2 - toastWidth / 2,
-      overlayBox.size.width - toastWidth - toastPadding,
-    ),
-  );
-  final top = math.max(
-    toastPadding,
-    math.min(
-      target.dy - toastHeight - toastGap,
-      overlayBox.size.height - toastHeight - toastPadding,
-    ),
-  );
-
-  final entry = OverlayEntry(
-    builder: (context) => Positioned(
-      left: left,
-      top: top,
-      child: _CopyToast(message: message),
-    ),
-  );
-  overlay.insert(entry);
-  Future<void>.delayed(const Duration(milliseconds: 900), entry.remove);
+String _shortPreview(String value) {
+  final oneLine = value.replaceAll('\n', ' ').trim();
+  if (oneLine.length <= 110) {
+    return oneLine;
+  }
+  return '${oneLine.substring(0, 107)}...';
 }

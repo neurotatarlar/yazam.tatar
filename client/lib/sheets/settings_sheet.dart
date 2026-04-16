@@ -1,4 +1,4 @@
-// Bottom-sheet UI for user settings controls.
+// Settings modal for theme, typography, and data controls.
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
@@ -11,48 +11,101 @@ class SettingsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            state.t('settings.title'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          _ThemeSelector(state: state),
-          const SizedBox(height: 12),
-          _FontSizeSelector(state: state),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            value: state.settings.autoScroll,
-            title: Text(state.t('settings.autoScroll')),
-            onChanged: (value) => state.updateSettings(
-              state.settings.copyWith(autoScroll: value),
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.8;
+
+    return SizedBox(
+      height: maxHeight,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    state.t('settings.title'),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: state.t('actions.close'),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
             ),
-          ),
-          SwitchListTile(
-            value: state.settings.saveHistory,
-            title: Text(state.t('settings.saveHistory')),
-            onChanged: (value) => state.updateSettings(
-              state.settings.copyWith(saveHistory: value),
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: () => _confirmClearHistory(context, state),
-            child: Text(state.t('settings.clearHistory')),
-          ),
-          if (state.config.buildSha.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Build: ${_shortSha(state.config.buildSha)}',
-              style: Theme.of(context).textTheme.bodySmall,
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView(
+                children: [
+                  _SettingsCard(
+                    title: state.t('settings.appearance'),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ThemeSelector(state: state),
+                        const SizedBox(height: 16),
+                        _FontSizeSelector(state: state),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _SettingsCard(
+                    title: state.t('settings.behavior'),
+                    child: Column(
+                      children: [
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          value: state.settings.autoScroll,
+                          title: Text(state.t('settings.autoScroll')),
+                          onChanged: (value) => state.updateSettings(
+                            state.settings.copyWith(autoScroll: value),
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          value: state.settings.saveHistory,
+                          title: Text(state.t('settings.saveHistory')),
+                          onChanged: (value) => state.updateSettings(
+                            state.settings.copyWith(saveHistory: value),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _SettingsCard(
+                    title: state.t('settings.data'),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: () => _confirmClearHistory(context, state),
+                          icon: const Icon(Icons.delete_sweep),
+                          label: Text(state.t('settings.clearHistory')),
+                        ),
+                        if (state.config.buildSha.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            state.t(
+                              'settings.build',
+                              vars: {'sha': _shortSha(state.config.buildSha)},
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -85,6 +138,37 @@ class SettingsSheet extends StatelessWidget {
   }
 }
 
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
 /// Theme selection UI.
 class _ThemeSelector extends StatelessWidget {
   const _ThemeSelector({required this.state});
@@ -97,32 +181,27 @@ class _ThemeSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(state.t('settings.theme')),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          children: [
-            ChoiceChip(
+        const SizedBox(height: 8),
+        SegmentedButton<ThemeMode>(
+          segments: [
+            ButtonSegment(
+              value: ThemeMode.light,
               label: Text(state.t('settings.light')),
-              selected: state.settings.themeMode == ThemeMode.light,
-              onSelected: (_) => state.updateSettings(
-                state.settings.copyWith(themeMode: ThemeMode.light),
-              ),
             ),
-            ChoiceChip(
+            ButtonSegment(
+              value: ThemeMode.dark,
               label: Text(state.t('settings.dark')),
-              selected: state.settings.themeMode == ThemeMode.dark,
-              onSelected: (_) => state.updateSettings(
-                state.settings.copyWith(themeMode: ThemeMode.dark),
-              ),
             ),
-            ChoiceChip(
+            ButtonSegment(
+              value: ThemeMode.system,
               label: Text(state.t('settings.system')),
-              selected: state.settings.themeMode == ThemeMode.system,
-              onSelected: (_) => state.updateSettings(
-                state.settings.copyWith(themeMode: ThemeMode.system),
-              ),
             ),
           ],
+          selected: {state.settings.themeMode},
+          showSelectedIcon: false,
+          onSelectionChanged: (selection) => state.updateSettings(
+            state.settings.copyWith(themeMode: selection.first),
+          ),
         ),
       ],
     );
@@ -141,29 +220,18 @@ class _FontSizeSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(state.t('settings.fontSize')),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          children: [
-            ChoiceChip(
-              label: Text(state.t('settings.small')),
-              selected: state.settings.fontScale == 0.9,
-              onSelected: (_) =>
-                  state.updateSettings(state.settings.copyWith(fontScale: 0.9)),
-            ),
-            ChoiceChip(
-              label: Text(state.t('settings.medium')),
-              selected: state.settings.fontScale == 1.0,
-              onSelected: (_) =>
-                  state.updateSettings(state.settings.copyWith(fontScale: 1)),
-            ),
-            ChoiceChip(
-              label: Text(state.t('settings.large')),
-              selected: state.settings.fontScale == 1.1,
-              onSelected: (_) =>
-                  state.updateSettings(state.settings.copyWith(fontScale: 1.1)),
-            ),
+        const SizedBox(height: 8),
+        SegmentedButton<double>(
+          segments: [
+            ButtonSegment(value: 0.9, label: Text(state.t('settings.small'))),
+            ButtonSegment(value: 1, label: Text(state.t('settings.medium'))),
+            ButtonSegment(value: 1.1, label: Text(state.t('settings.large'))),
           ],
+          selected: {state.settings.fontScale},
+          showSelectedIcon: false,
+          onSelectionChanged: (selection) => state.updateSettings(
+            state.settings.copyWith(fontScale: selection.first),
+          ),
         ),
       ],
     );
