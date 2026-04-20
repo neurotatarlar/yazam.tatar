@@ -128,7 +128,7 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
         await enforce_body_size(request, state.settings.max_body_bytes)
         body = await parse_json_body(request)
         text = str(body.get("text", ""))
-        lang = body.get("lang") or "tt"
+        lang = resolve_correction_lang(body)
         validate_text(text, state.settings.max_chars)
     except HTTPException:
         state.total_invalid += 1
@@ -143,7 +143,7 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
         raise HTTPException(status_code=429, detail={"error": "rate_limited"})
 
     rid = request_id()
-    cached = state.cache.get(cache_key(text, lang))
+    cached = state.cache.get(cache_key(text))
     if cached:
         state.total_cache_hits += 1
         CACHE_HITS.inc()
@@ -173,7 +173,7 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
             status_code=500, detail={"error": "server_error", "request_id": rid}
         ) from err
 
-    state.cache.set(cache_key(text, lang), corrected, state.adapter.name)
+    state.cache.set(cache_key(text), corrected, state.adapter.name)
     latency = int((time.time() - started) * 1000)
     REQUESTS_TOTAL.labels(endpoint="correct", outcome="ok").inc()
     REQUEST_LATENCY.labels(endpoint="correct").observe(time.time() - started)
@@ -193,7 +193,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
         await enforce_body_size(request, state.settings.max_body_bytes)
         body = await parse_json_body(request)
         text = str(body.get("text", ""))
-        lang = body.get("lang") or "tt"
+        lang = resolve_correction_lang(body)
         validate_text(text, state.settings.max_chars)
     except HTTPException:
         state.total_invalid += 1
@@ -278,7 +278,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
                     latency = int((time.time() - started) * 1000)
                     yield sse_event("done", {"request_id": rid, "latency_ms": latency})
                     if corrected:
-                        state.cache.set(cache_key(text, lang), corrected, state.adapter.name)
+                        state.cache.set(cache_key(text), corrected, state.adapter.name)
                     state.total_streams_done += 1
                     record_stream_outcome("ok")
                     break
@@ -330,6 +330,27 @@ def validate_text(text: str, max_chars: int):
         raise HTTPException(
             status_code=400, detail={"error": "invalid_input", "message": "too_long"}
         )
+
+
+def resolve_correction_lang(payload: dict[str, Any]) -> str:
+    """Accept only Tatar correction language and default missing values to tt."""
+    raw = payload.get("lang")
+    if raw is None:
+        return "tt"
+    if not isinstance(raw, str):
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "invalid_input", "message": "invalid_lang"},
+        )
+    value = raw.strip().lower()
+    if not value:
+        return "tt"
+    if value != "tt":
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "invalid_input", "message": "unsupported_lang"},
+        )
+    return "tt"
 
 
 def ensure_json_request(request: Request) -> None:

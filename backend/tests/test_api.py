@@ -417,14 +417,19 @@ async def test_concurrency_guard_is_per_ip():
 
 
 @pytest.mark.asyncio
-async def test_missing_lang_defaults():
+async def test_lang_defaults_to_tatar_and_rejects_other_values():
     setup_state()
     async with make_client() as client:
         response = await client.post("/v1/correct", json={"text": "hello"})
         assert response.status_code == 200
 
         invalid = await client.post("/v1/correct", json={"text": "hello", "lang": 123})
-        assert invalid.status_code == 200
+        assert invalid.status_code == 400
+        assert invalid.json()["detail"]["message"] == "invalid_lang"
+
+        unsupported = await client.post("/v1/correct", json={"text": "hello", "lang": "ru"})
+        assert unsupported.status_code == 400
+        assert unsupported.json()["detail"]["message"] == "unsupported_lang"
 
         async with client.stream(
             "POST",
@@ -439,8 +444,14 @@ async def test_missing_lang_defaults():
             "/v1/correct/stream",
             json={"text": "hello", "lang": 123},
         ) as stream_response:
-            assert stream_response.status_code == 200
-            await collect_events(stream_response)
+            assert stream_response.status_code == 400
+
+        async with client.stream(
+            "POST",
+            "/v1/correct/stream",
+            json={"text": "hello", "lang": "en"},
+        ) as stream_response:
+            assert stream_response.status_code == 400
 
 
 @pytest.mark.asyncio

@@ -41,9 +41,9 @@ def test_validate_text_rejects_too_long():
 
 
 def test_cache_key_deterministic():
-    key1 = cache_key("text", "tt")
-    key2 = cache_key("text", "tt")
-    key3 = cache_key("text", "ru")
+    key1 = cache_key("text")
+    key2 = cache_key("text")
+    key3 = cache_key("another")
     assert key1 == key2
     assert key1 != key3
 

@@ -411,7 +411,7 @@ class _Sidebar extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const _PartnerLogo(
-                  assetPath: 'assets/partners/tatfor.jpeg',
+                  assetPath: 'assets/partners/tatfor.png',
                 ),
               ],
             ),

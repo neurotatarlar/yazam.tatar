@@ -103,9 +103,9 @@ def chunk_text(text: str, size: int):
         yield text[i : i + size]
 
 
-def cache_key(text: str, lang: str) -> str:
-    """Build a cache key from the input text and language."""
-    return hashlib.sha256(f"{text}{lang}".encode()).hexdigest()
+def cache_key(text: str) -> str:
+    """Build a cache key from normalized correction input text."""
+    return hashlib.sha256(text.encode()).hexdigest()
 
 
 def request_id() -> str:
