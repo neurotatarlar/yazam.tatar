@@ -18,6 +18,7 @@ const _surfaceHigh = Color(0xFFE2E7FF);
 const _text = Color(0xFF131B2E);
 const _muted = Color(0xFF76777D);
 const _outline = Color(0xFFC6C6CD);
+const _shellBorder = Color(0x1F9CA6BA);
 
 const _sidebarWidth = 256.0;
 const _headerHeight = 64.0;
@@ -181,30 +182,41 @@ class _HomePageState extends State<HomePage> {
             ),
             Expanded(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _Sidebar(
                     state: state,
                     onOpenSupport: (url) => _openExternal(context, state, url),
                   ),
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: _WorkspacePanel(
-                              state: state,
-                              inputController: _inputController,
-                              inputFocusNode: _inputFocusNode,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final workspaceHeight = (constraints.maxHeight * 0.42)
+                            .clamp(280.0, 380.0);
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(
+                                  height: workspaceHeight,
+                                  child: _WorkspacePanel(
+                                    state: state,
+                                    inputController: _inputController,
+                                    inputFocusNode: _inputFocusNode,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                _ActionBar(
+                                  state: state,
+                                  inputController: _inputController,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          _ActionBar(
-                            state: state,
-                            inputController: _inputController,
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -263,7 +275,7 @@ class _HeaderBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: const BoxDecoration(
         color: _headerBg,
-        border: Border(bottom: BorderSide(color: _outline)),
+        border: Border.fromBorderSide(BorderSide(color: _shellBorder)),
       ),
       child: Row(
         children: [
@@ -358,7 +370,10 @@ class _Sidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: _sidebarWidth,
-      decoration: const BoxDecoration(color: _sidebarBg),
+      decoration: const BoxDecoration(
+        color: _sidebarBg,
+        border: Border.fromBorderSide(BorderSide(color: _shellBorder)),
+      ),
       child: Column(
         children: [
           const SizedBox(height: 26),
@@ -538,6 +553,7 @@ class _WorkspacePanel extends StatelessWidget {
                   onChanged: state.updateOriginalText,
                   expands: true,
                   maxLines: null,
+                  textAlignVertical: TextAlignVertical.top,
                   decoration: InputDecoration(
                     hintText: state.t('input.placeholder'),
                     border: InputBorder.none,
@@ -608,7 +624,7 @@ class _WorkspacePanel extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _outline),
+            border: Border.all(color: _shellBorder),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
@@ -619,7 +635,7 @@ class _WorkspacePanel extends StatelessWidget {
                       const SizedBox(
                         width: 1,
                         child: DecoratedBox(
-                          decoration: BoxDecoration(color: _outline),
+                          decoration: BoxDecoration(color: _shellBorder),
                         ),
                       ),
                       Expanded(child: correctionPane),
@@ -634,7 +650,7 @@ class _WorkspacePanel extends StatelessWidget {
                       const SizedBox(
                         height: 1,
                         child: DecoratedBox(
-                          decoration: BoxDecoration(color: _outline),
+                          decoration: BoxDecoration(color: _shellBorder),
                         ),
                       ),
                       Expanded(child: correctionPane),
@@ -656,17 +672,20 @@ class _CorrectionBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
-      return Text(
-        state.errorMessage!,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: Theme.of(context).colorScheme.error,
+      return Align(
+        alignment: Alignment.topLeft,
+        child: Text(
+          state.errorMessage!,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            color: Theme.of(context).colorScheme.error,
+          ),
         ),
       );
     }
 
     if (state.isStreaming && correctionText.isEmpty) {
       return Align(
-        alignment: Alignment.centerLeft,
+        alignment: Alignment.topLeft,
         child: Text(
           state.t('status.correcting'),
           style: Theme.of(context).textTheme.bodyLarge,
@@ -675,15 +694,21 @@ class _CorrectionBody extends StatelessWidget {
     }
 
     if (correctionText.isNotEmpty) {
-      return SelectableText(
-        correctionText,
-        style: Theme.of(context).textTheme.bodyLarge,
+      return Align(
+        alignment: Alignment.topLeft,
+        child: SelectableText(
+          correctionText,
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
       );
     }
 
-    return Text(
-      state.t('empty.title'),
-      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: _muted),
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Text(
+        state.t('empty.title'),
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: _muted),
+      ),
     );
   }
 }
