@@ -1,27 +1,31 @@
-# Deployment (dev VPS)
+# Deployment (demo + production)
 
-This repo ships GitHub Actions workflows for a lightweight, non-Docker deployment to a VPS.
-The dev instance is served under `/app` and the backend is available at `/app/api`.
+This repo uses lightweight VPS deploys (no Docker) through GitHub Actions with two environments:
+- `demo`: deployed on push to `master`, served under `/app` with API at `/app/api`
+- `production`: deployed on push to `release`, served from `/` with API at `/api`
 
 ## Paths and services
 - Backend venv: `/opt/gec_tt/venv`
 - Backend config: `/opt/gec_tt/.env`
 - Web root: `/var/www/gec_tt`
-- Systemd service: `gec-tt-backend`
-- Nginx site file: `/etc/nginx/sites-available/gec-annotation.conf`
+- Backend systemd: `gec-tt-backend`
+- VPN policy systemd: `gec-tt-vpn-policy`
 
-## GitHub Actions workflows
-- `Dev Init` (manual only): initial VPS setup (idempotent).
-- `Dev Deploy` (push to `master`): build wheel + web bundle, deploy via SSH.
-- `Release Builds` (push to `release/v*`): build artifacts and publish a GitHub Release.
+## Workflows
+- `environment bootstrap` (`.github/workflows/dev-init.yml`): manual bootstrap for `demo` or `production`
+- `environment deploy` (`.github/workflows/dev-deploy.yml`):
+  - `master` -> deploy `demo`
+  - `release` -> deploy `production`
+- `release package` (`.github/workflows/release.yml`): manual tagged package release
 
 ## VPS preparation (first run)
 1) Install packages:
 ```
 sudo apt-get update
-sudo apt-get install -y python3 python3-venv python3-pip nginx
+sudo apt-get install -y python3 python3-venv python3-pip nginx wireguard
 ```
-2) Create the deploy user and add its SSH key:
+
+2) Create deploy user and SSH access:
 ```
 sudo useradd --create-home --shell /bin/bash gec-tt-bot
 sudo mkdir -p /home/gec-tt-bot/.ssh
@@ -30,48 +34,45 @@ sudo chown -R gec-tt-bot:gec-tt-bot /home/gec-tt-bot/.ssh
 sudo chmod 700 /home/gec-tt-bot/.ssh
 sudo chmod 600 /home/gec-tt-bot/.ssh/authorized_keys
 ```
-3) Allow `gec-tt-bot` to run these commands via sudo without a password:
-   - `systemctl restart gec-tt-backend`
-   - `systemctl reload nginx`
-   - `nginx -t`
-   - `systemctl enable wg-quick@wg0`
-   - `systemctl disable wg-quick@wg0`
-   - `systemctl start wg-quick@wg0`
-   - `systemctl stop wg-quick@wg0`
-   - `systemctl enable gec-tt-vpn-policy`
-   - `systemctl disable gec-tt-vpn-policy`
-   - `systemctl start gec-tt-vpn-policy`
-   - `systemctl stop gec-tt-vpn-policy`
-   - `systemctl daemon-reload`
-   - `apt-get update`
-   - `apt-get install`
-   - `install`
-   - `tee`
-   - `ip`
-   - `nft`
 
-Example sudoers entry (edit with `visudo`):
+3) Allow passwordless sudo for deploy operations (`visudo`):
 ```
-gec-tt-bot ALL=NOPASSWD:/bin/systemctl restart gec-tt-backend,/bin/systemctl reload nginx,/usr/sbin/nginx -t,/bin/systemctl daemon-reload,/bin/systemctl enable gec-tt-backend,/bin/systemctl enable wg-quick@wg0,/bin/systemctl disable wg-quick@wg0,/bin/systemctl start wg-quick@wg0,/bin/systemctl stop wg-quick@wg0,/bin/systemctl enable gec-tt-vpn-policy,/bin/systemctl disable gec-tt-vpn-policy,/bin/systemctl start gec-tt-vpn-policy,/bin/systemctl stop gec-tt-vpn-policy,/usr/bin/apt-get update,/usr/bin/apt-get install,/usr/bin/install,/usr/bin/tee,/usr/sbin/ip,/usr/sbin/nft
+gec-tt-bot ALL=NOPASSWD:/bin/systemctl restart gec-tt-backend,/bin/systemctl reload nginx,/usr/sbin/nginx -t,/bin/systemctl daemon-reload,/bin/systemctl enable gec-tt-backend,/bin/systemctl enable wg-quick@wg0,/bin/systemctl disable wg-quick@wg0,/bin/systemctl start wg-quick@wg0,/bin/systemctl stop wg-quick@wg0,/bin/systemctl enable gec-tt-vpn-policy,/bin/systemctl disable gec-tt-vpn-policy,/bin/systemctl start gec-tt-vpn-policy,/bin/systemctl stop gec-tt-vpn-policy,/usr/bin/apt-get update,/usr/bin/apt-get install,/usr/bin/install,/usr/bin/tee,/usr/sbin/ip,/usr/sbin/nft,/bin/cp,/bin/chmod,/bin/chown,/bin/mkdir,/bin/sed
 ```
 
-## GitHub Secrets
-Set these in repo settings:
-- `DEV_HOST`: VPS IP
-- `DEV_USER`: `gec-tt-bot`
-- `DEV_SSH_KEY`: private key contents
-- `DEV_SSH_PORT`: `22` (or your custom port)
-- `GEMINI_API_KEYS`: comma-separated Gemini API keys (for demo proxy)
-- `WG_CONFIG`: WireGuard config content for the VPS (multi-line)
+## GitHub environments and secrets
+Create GitHub environments: `demo`, `production`.
 
-## Nginx routing
-The init workflow injects a snippet into the existing nginx site file to serve:
-- `/app/` -> `/var/www/gec_tt`
-- `/app/api/` -> `127.0.0.1:3000`
+Per environment, define secrets:
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+- `DEPLOY_SSH_PORT`
+- `GEMINI_API_KEYS`
+- `WG_CONFIG` (optional; if set, bootstrap writes `/etc/wireguard/wg0.conf` and enables VPN services)
 
-If you update nginx manually, use the snippet in `deploy/nginx/gec-tt-app.conf`.
-For brotli, `deploy/nginx/gec-tt-brotli.conf` is installed only when the
-brotli module is available; otherwise the init script creates an empty file.
+Per environment, optional vars:
+- `NGINX_SITE` (override target nginx server file)
+- `MODEL_BACKEND` (default `gemini`)
+- `GEMINI_MODEL` (default `gemini-3-flash-preview`)
 
-One-liner manual refresh:
-`sudo install -m 644 deploy/nginx/gec-tt-app.conf /etc/nginx/snippets/gec-tt-app.conf && sudo nginx -t && sudo systemctl reload nginx`
+Defaults by environment if `NGINX_SITE` is not set:
+- `demo` -> `/etc/nginx/sites-available/gec-annotation.conf`
+- `production` -> `/etc/nginx/sites-available/gec-tt.conf`
+
+## Nginx snippets
+- Demo path routing: `deploy/nginx/gec-tt-app.conf`
+- Production root routing: `deploy/nginx/gec-tt-root.conf`
+- Brotli add-on: `deploy/nginx/gec-tt-brotli.conf`
+
+## SSL (production)
+After DNS `A`/`AAAA` for `yazam.tatar` points to production host and ports `80/443` are open:
+1) Obtain certificate (example):
+```
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d yazam.tatar -d www.yazam.tatar
+```
+2) Verify auto-renew:
+```
+sudo certbot renew --dry-run
+```

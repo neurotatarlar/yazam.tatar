@@ -1,15 +1,44 @@
-name: dev env init
+name: environment bootstrap
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - demo
+          - production
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ inputs.environment }}
   cancel-in-progress: true
 
 jobs:
+  target:
+    runs-on: ubuntu-latest
+    outputs:
+      nginx_site: ${{ steps.select.outputs.nginx_site }}
+      snippet_path: ${{ steps.select.outputs.snippet_path }}
+    steps:
+      - id: select
+        run: |
+          if [ "${{ inputs.environment }}" = "demo" ]; then
+            echo "nginx_site=/etc/nginx/sites-available/gec-annotation.conf" >> "$GITHUB_OUTPUT"
+            echo "snippet_path=deploy/nginx/gec-tt-app.conf" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.environment }}" = "production" ]; then
+            echo "nginx_site=/etc/nginx/sites-available/gec-tt.conf" >> "$GITHUB_OUTPUT"
+            echo "snippet_path=deploy/nginx/gec-tt-root.conf" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unsupported environment: ${{ inputs.environment }}" >&2
+            exit 1
+          fi
+
   init:
     runs-on: ubuntu-latest
+    needs: target
+    environment: ${{ inputs.environment }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -17,26 +46,35 @@ jobs:
       - name: Upload init assets
         uses: appleboy/scp-action@v1.0.0
         with:
-          host: ${{ secrets.DEV_HOST }}
-          username: ${{ secrets.DEV_USER }}
-          key: ${{ secrets.DEV_SSH_KEY }}
-          port: ${{ secrets.DEV_SSH_PORT }}
-          source: "deploy/dev_init.sh,deploy/systemd/gec-tt-backend.service,deploy/nginx/gec-tt-app.conf,.env.example"
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT }}
+          source: "deploy/dev_init.sh,deploy/systemd/gec-tt-backend.service,deploy/systemd/gec-tt-vpn-policy.service,deploy/gec-tt-vpn-policy.sh,deploy/nginx/gec-tt-app.conf,deploy/nginx/gec-tt-root.conf,deploy/nginx/gec-tt-brotli.conf,deploy/nginx/gec-tt-site.conf,.env.example"
           target: "/tmp/gec-tt-init"
 
       - name: Run init
         uses: appleboy/ssh-action@v1.2.5
+        env:
+          WG_CONFIG: ${{ secrets.WG_CONFIG }}
         with:
-          host: ${{ secrets.DEV_HOST }}
-          username: ${{ secrets.DEV_USER }}
-          key: ${{ secrets.DEV_SSH_KEY }}
-          port: ${{ secrets.DEV_SSH_PORT }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT }}
+          envs: WG_CONFIG
           script: |
             set -e
             chmod +x /tmp/gec-tt-init/deploy/dev_init.sh
+            NGINX_SITE="${{ vars.NGINX_SITE }}"
+            NGINX_SITE_DEFAULT="${{ needs.target.outputs.nginx_site }}"
+            if [ -z "$NGINX_SITE" ]; then
+              NGINX_SITE="$NGINX_SITE_DEFAULT"
+            fi
             INIT_ROOT=/tmp/gec-tt-init \
               APP_USER=gec-tt-bot \
               APP_DIR=/opt/gec_tt \
               WEB_DIR=/var/www/gec_tt \
-              NGINX_SITE=/etc/nginx/sites-available/gec-annotation.conf \
+              NGINX_SITE="$NGINX_SITE" \
+              NGINX_SRC="/tmp/gec-tt-init/${{ needs.target.outputs.snippet_path }}" \
               /tmp/gec-tt-init/deploy/dev_init.sh

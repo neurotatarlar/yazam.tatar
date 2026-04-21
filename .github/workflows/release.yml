@@ -1,33 +1,50 @@
-name: release builds
+name: release package
 
 on:
-  push:
-    branches:
-      - "release/v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (example: v1.2.3)"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.tag }}
+  cancel-in-progress: false
 
 jobs:
-  build-web:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Build backend wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m pip install -r requirements.txt
+          python -m build --wheel --outdir dist
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+
       - name: Install web compression tools
         run: |
           sudo apt-get update
           sudo apt-get install -y brotli
+
       - name: Build web
         run: |
           cd client
@@ -36,117 +53,18 @@ jobs:
             WASM_FLAG="--wasm"
           fi
           flutter pub get
-          flutter build web --base-href /app/ $WASM_FLAG --tree-shake-icons
+          flutter build web --base-href / $WASM_FLAG --tree-shake-icons
           if [ "${WEB_WASM:-false}" = "true" ]; then
             python -c "from pathlib import Path; path = Path('build/web/index.html'); text = path.read_text(); needle = '<link rel=\"preload\" href=\"flutter_bootstrap.js\" as=\"script\">'; wasm = '<link rel=\"preload\" href=\"main.dart.wasm\" as=\"fetch\" type=\"application/wasm\" crossorigin>'; text = text if wasm in text else text.replace(needle, f\"{needle}\\n  {wasm}\"); path.write_text(text)"
           fi
           bash ../deploy/precompress_web.sh build/web
-          tar -czf ../gec-tt-web.tar.gz -C build/web .
-      - name: Upload web artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: web
-          path: gec-tt-web.tar.gz
+          tar -czf ../dist/gec-tt-web.tar.gz -C build/web .
 
-  build-android:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - name: Build android
-        run: |
-          cd client
-          flutter pub get
-          flutter build apk --debug
-          flutter build appbundle --debug
-          mkdir -p ../dist
-          cp build/app/outputs/flutter-apk/app-debug.apk ../dist/gec-tt-android-debug.apk
-          cp build/app/outputs/bundle/debug/app-debug.aab ../dist/gec-tt-android-debug.aab
-      - name: Upload android artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: android
-          path: dist/*
-
-  build-linux:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Install linux build deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - name: Build linux
-        run: |
-          cd client
-          flutter config --enable-linux-desktop
-          flutter pub get
-          flutter build linux
-          tar -czf ../gec-tt-linux.tar.gz -C build/linux/x64/release/bundle .
-      - name: Upload linux artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: linux
-          path: gec-tt-linux.tar.gz
-
-  build-windows:
-    runs-on: windows-latest
-    timeout-minutes: 35
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - name: Build windows
-        run: |
-          cd client
-          flutter config --enable-windows-desktop
-          flutter pub get
-          flutter build windows
-          powershell -Command "New-Item -ItemType Directory -Path ../dist -Force | Out-Null"
-          powershell -Command "Compress-Archive -Path build/windows/runner/Release/* -DestinationPath ../dist/gec-tt-windows.zip"
-      - name: Upload windows artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: windows
-          path: dist/gec-tt-windows.zip
-
-  release:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs:
-      - build-web
-      - build-android
-      - build-linux
-      - build-windows
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v7
-        with:
-          path: dist
-      - name: Compute tag
-        id: tag
-        run: |
-          echo "tag=${GITHUB_REF_NAME#release/}" >> "$GITHUB_OUTPUT"
-      - name: Create release
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
+          tag_name: ${{ inputs.tag }}
           target_commitish: ${{ github.sha }}
-          files: dist/**/*
+          files: |
+            dist/*.whl
+            dist/gec-tt-web.tar.gz
