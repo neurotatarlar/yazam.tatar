@@ -50,11 +50,15 @@ Per environment, define secrets:
 - `DEPLOY_SSH_PORT`
 - `GEMINI_API_KEYS`
 - `WG_CONFIG` (optional; if set, bootstrap writes `/etc/wireguard/wg0.conf` and enables VPN services)
+- `CERTBOT_EMAIL` (required for `production` bootstrap TLS setup)
 
 Per environment, optional vars:
 - `NGINX_SITE` (override target nginx server file)
 - `MODEL_BACKEND` (default `gemini`)
 - `GEMINI_MODEL` (default `gemini-3-flash-preview`)
+- `CERTBOT_PRIMARY_DOMAIN` (default `yazam.tatar`)
+- `CERTBOT_EXTRA_DOMAINS` (comma-separated, example `www.yazam.tatar`)
+- `CERTBOT_RENEW_DRY_RUN` (`true`/`false`, default `false`)
 
 Defaults by environment if `NGINX_SITE` is not set:
 - `demo` -> `/etc/nginx/sites-available/gec-annotation.conf`
@@ -67,12 +71,13 @@ Defaults by environment if `NGINX_SITE` is not set:
 
 ## SSL (production)
 After DNS `A`/`AAAA` for `yazam.tatar` points to production host and ports `80/443` are open:
-1) Obtain certificate (example):
-```
-sudo apt-get install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d yazam.tatar -d www.yazam.tatar
-```
-2) Verify auto-renew:
-```
-sudo certbot renew --dry-run
-```
+1) Set production environment secret `CERTBOT_EMAIL`.
+2) Optionally set production vars `CERTBOT_PRIMARY_DOMAIN` and `CERTBOT_EXTRA_DOMAINS`.
+3) Run workflow `environment bootstrap` with `environment=production`.
+4) (Optional) set `CERTBOT_RENEW_DRY_RUN=true` to run renewal dry-run during bootstrap.
+
+TLS hardening applied by bootstrap:
+- HTTP to HTTPS redirect via certbot nginx integration
+- HSTS (`max-age=63072000; includeSubDomains; preload`)
+
+Note: DNS and cloud firewall/security-group rules are external infrastructure and must be configured outside GitHub Actions.

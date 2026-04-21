@@ -50,7 +50,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_SSH_PORT }}
-          source: "deploy/dev_init.sh,deploy/systemd/gec-tt-backend.service,deploy/systemd/gec-tt-vpn-policy.service,deploy/gec-tt-vpn-policy.sh,deploy/nginx/gec-tt-app.conf,deploy/nginx/gec-tt-root.conf,deploy/nginx/gec-tt-brotli.conf,deploy/nginx/gec-tt-site.conf,.env.example"
+          source: "deploy/dev_init.sh,deploy/prod_tls_hardening.sh,deploy/systemd/gec-tt-backend.service,deploy/systemd/gec-tt-vpn-policy.service,deploy/gec-tt-vpn-policy.sh,deploy/nginx/gec-tt-app.conf,deploy/nginx/gec-tt-root.conf,deploy/nginx/gec-tt-brotli.conf,deploy/nginx/gec-tt-site.conf,.env.example"
           target: "/tmp/gec-tt-init"
 
       - name: Run init
@@ -78,3 +78,37 @@ jobs:
               NGINX_SITE="$NGINX_SITE" \
               NGINX_SRC="/tmp/gec-tt-init/${{ needs.target.outputs.snippet_path }}" \
               /tmp/gec-tt-init/deploy/dev_init.sh
+
+      - name: Configure production TLS hardening
+        if: inputs.environment == 'production'
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          CERTBOT_EMAIL: ${{ secrets.CERTBOT_EMAIL }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT }}
+          envs: CERTBOT_EMAIL
+          script: |
+            set -e
+            chmod +x /tmp/gec-tt-init/deploy/prod_tls_hardening.sh
+            PRIMARY_DOMAIN="${{ vars.CERTBOT_PRIMARY_DOMAIN }}"
+            if [ -z "$PRIMARY_DOMAIN" ]; then
+              PRIMARY_DOMAIN="yazam.tatar"
+            fi
+            EXTRA_DOMAINS="${{ vars.CERTBOT_EXTRA_DOMAINS }}"
+            NGINX_SITE="${{ vars.NGINX_SITE }}"
+            if [ -z "$NGINX_SITE" ]; then
+              NGINX_SITE="${{ needs.target.outputs.nginx_site }}"
+            fi
+            CHECK_RENEW_DRY_RUN="${{ vars.CERTBOT_RENEW_DRY_RUN }}"
+            if [ -z "$CHECK_RENEW_DRY_RUN" ]; then
+              CHECK_RENEW_DRY_RUN="false"
+            fi
+            PRIMARY_DOMAIN="$PRIMARY_DOMAIN" \
+              EXTRA_DOMAINS="$EXTRA_DOMAINS" \
+              CERTBOT_EMAIL="$CERTBOT_EMAIL" \
+              NGINX_SITE="$NGINX_SITE" \
+              CHECK_RENEW_DRY_RUN="$CHECK_RENEW_DRY_RUN" \
+              /tmp/gec-tt-init/deploy/prod_tls_hardening.sh
