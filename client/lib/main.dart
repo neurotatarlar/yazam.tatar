@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_state.dart';
+import 'models.dart';
 
 const _brandColor = Color(0xFF4F46E5);
 const _bg = Color(0xFFFAF8FF);
@@ -24,6 +25,8 @@ const _sidebarWidth = 256.0;
 const _headerHeight = 64.0;
 const _wordmark = 'YAZAM.TATAR';
 const _tbankDonationUrl = 'https://www.tbank.ru/cf/5DeXHs3nnOy';
+
+enum _ShellSection { workspace, history }
 
 /// App entry point that boots configuration and state.
 Future<void> main() async {
@@ -186,6 +189,8 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   _Sidebar(
                     state: state,
+                    section: _ShellSection.workspace,
+                    onOpenHistory: _openHistoryPage,
                     onOpenSupport: (url) => _openExternal(context, state, url),
                   ),
                   Expanded(
@@ -259,6 +264,106 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     _inputFocusNode.requestFocus();
+  }
+
+  void _openHistoryPage() {
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(name: '/history'),
+          builder: (_) => const HistoryPage(),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dedicated read-only history page.
+class HistoryPage extends StatefulWidget {
+  const HistoryPage({super.key});
+
+  @override
+  State<HistoryPage> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends State<HistoryPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(_loadAllHistory());
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            _HeaderBar(
+              state: state,
+              onBrandTap: _goWorkspace,
+            ),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Sidebar(
+                    state: state,
+                    section: _ShellSection.history,
+                    onOpenWorkspace: _goWorkspace,
+                    onOpenSupport: (url) => _openExternal(context, state, url),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                      child: _HistoryPanel(state: state),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadAllHistory() async {
+    final state = context.read<AppState>();
+    while (mounted && state.hasMoreHistory) {
+      final loaded = await state.loadMoreHistory();
+      if (!loaded) {
+        break;
+      }
+    }
+  }
+
+  void _goWorkspace() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _openExternal(
+    BuildContext context,
+    AppState state,
+    String url,
+  ) async {
+    final ok = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(state.t('errors.openLink'))),
+      );
+    }
   }
 }
 
@@ -361,10 +466,19 @@ class _LanguagePill extends StatelessWidget {
 }
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.state, required this.onOpenSupport});
+  const _Sidebar({
+    required this.state,
+    required this.section,
+    required this.onOpenSupport,
+    this.onOpenWorkspace,
+    this.onOpenHistory,
+  });
 
   final AppState state;
+  final _ShellSection section;
   final Future<void> Function(String url) onOpenSupport;
+  final VoidCallback? onOpenWorkspace;
+  final VoidCallback? onOpenHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -389,12 +503,14 @@ class _Sidebar extends StatelessWidget {
           _SidebarItem(
             icon: Icons.edit_note,
             label: state.t('nav.workspace'),
-            selected: true,
-            onTap: () {},
+            selected: section == _ShellSection.workspace,
+            onTap: section == _ShellSection.workspace ? null : onOpenWorkspace,
           ),
           _SidebarItem(
             icon: Icons.history,
             label: state.t('history.title'),
+            selected: section == _ShellSection.history,
+            onTap: section == _ShellSection.history ? null : onOpenHistory,
           ),
           _SidebarItem(
             icon: Icons.settings,
@@ -511,6 +627,154 @@ class _SidebarItem extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HistoryPanel extends StatelessWidget {
+  const _HistoryPanel({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.history.isEmpty) {
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _shellBorder),
+          color: _surface,
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Text(
+          state.t('history.empty'),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: _muted,
+          ),
+        ),
+      );
+    }
+
+    final groups = _groupHistoryByDay(state.history);
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _shellBorder),
+        color: _surface,
+      ),
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: groups.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 18),
+        itemBuilder: (context, index) {
+          final group = groups[index];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                group.day,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: _muted,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 10),
+              for (var i = 0; i < group.items.length; i++) ...[
+                _HistoryCard(
+                  item: group.items[i],
+                  state: state,
+                ),
+                if (i != group.items.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({required this.item, required this.state});
+
+  final HistoryItem item;
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: _surfaceLow,
+        border: Border.all(color: _shellBorder),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _formatEuropeanTimestamp(item.timestamp),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: _muted,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            item.original.trim(),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: _muted,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            item.corrected.trim(),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: _brandColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryDayGroup {
+  const _HistoryDayGroup({required this.day, required this.items});
+
+  final String day;
+  final List<HistoryItem> items;
+}
+
+List<_HistoryDayGroup> _groupHistoryByDay(List<HistoryItem> items) {
+  final grouped = <String, List<HistoryItem>>{};
+  for (final item in items) {
+    final day = _formatEuropeanDate(item.timestamp);
+    grouped.putIfAbsent(day, () => []).add(item);
+  }
+  return grouped.entries
+      .map((entry) => _HistoryDayGroup(day: entry.key, items: entry.value))
+      .toList();
+}
+
+String _formatEuropeanDate(DateTime timestamp) {
+  final local = timestamp.toLocal();
+  final day = local.day.toString().padLeft(2, '0');
+  final month = local.month.toString().padLeft(2, '0');
+  final year = local.year.toString().padLeft(4, '0');
+  return '$day.$month.$year';
+}
+
+String _formatEuropeanTimestamp(DateTime timestamp) {
+  final local = timestamp.toLocal();
+  final day = local.day.toString().padLeft(2, '0');
+  final month = local.month.toString().padLeft(2, '0');
+  final year = local.year.toString().padLeft(4, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '$day.$month.$year $hour:$minute';
 }
 
 class _WorkspacePanel extends StatelessWidget {
