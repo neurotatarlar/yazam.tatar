@@ -64,7 +64,7 @@ class Settings {
       fontScale = 1.0,
       autoScroll = true,
       saveHistory = true,
-      language = 'en',
+      language = 'tt',
       layoutMode = LayoutMode.horizontal;
   final ThemeMode themeMode;
   final double fontScale;

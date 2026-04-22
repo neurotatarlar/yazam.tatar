@@ -513,10 +513,6 @@ class _Sidebar extends StatelessWidget {
             onTap: section == _ShellSection.history ? null : onOpenHistory,
           ),
           _SidebarItem(
-            icon: Icons.settings,
-            label: state.t('settings.title'),
-          ),
-          _SidebarItem(
             icon: Icons.favorite,
             label: state.t('nav.support'),
             iconColor: const Color(0xFFF43F5E),

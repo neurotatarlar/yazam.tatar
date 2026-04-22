@@ -42,7 +42,7 @@ void main() {
     expect(updated.themeMode, ThemeMode.system);
     expect(updated.autoScroll, isTrue);
     expect(updated.saveHistory, isTrue);
-    expect(updated.language, 'en');
+    expect(updated.language, 'tt');
   });
 
   test('HistoryItem roundtrip preserves fields', () {

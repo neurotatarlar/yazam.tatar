@@ -20,7 +20,7 @@ class SettingsStore {
     final fontScale = prefs.getDouble(_fontScaleKey) ?? 1.0;
     final autoScroll = prefs.getBool(_autoScrollKey) ?? true;
     final saveHistory = prefs.getBool(_saveHistoryKey) ?? true;
-    final language = prefs.getString(_languageKey) ?? 'en';
+    final language = prefs.getString(_languageKey) ?? 'tt';
     final layout = prefs.getString(_layoutKey) ?? 'horizontal';
 
     return Settings(
