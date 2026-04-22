@@ -221,6 +221,39 @@ class AppState extends ChangeNotifier {
     return page.isNotEmpty;
   }
 
+  /// Load all persisted history at once and merge with in-memory entries.
+  Future<void> loadAllHistoryForView() async {
+    if (isHistoryLoading) {
+      return;
+    }
+    isHistoryLoading = true;
+    notifyListeners();
+    final persisted = await historyStore.loadAll();
+    final mergedByKey = <String, HistoryItem>{};
+    String keyOf(HistoryItem item) {
+      if (item.id.isNotEmpty) {
+        return 'id:${item.id}';
+      }
+      return 'ts:${item.timestamp.toIso8601String()}|'
+          'orig:${item.original}|corr:${item.corrected}';
+    }
+
+    for (final item in history) {
+      mergedByKey[keyOf(item)] = item;
+    }
+    for (final item in persisted) {
+      mergedByKey.putIfAbsent(keyOf(item), () => item);
+    }
+
+    final merged = mergedByKey.values.toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    history = merged;
+    _loadedPersisted = persisted.length;
+    hasMoreHistory = false;
+    isHistoryLoading = false;
+    notifyListeners();
+  }
+
   /// Submit the current input for correction.
   Future<void> submit() async {
     final text = originalText.trim();

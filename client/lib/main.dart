@@ -270,9 +270,28 @@ class _HomePageState extends State<HomePage> {
   void _openHistoryPage() {
     unawaited(
       Navigator.of(context).push(
-        MaterialPageRoute<void>(
+        PageRouteBuilder<void>(
           settings: const RouteSettings(name: '/history'),
-          builder: (_) => const HistoryPage(),
+          transitionDuration: const Duration(milliseconds: 220),
+          reverseTransitionDuration: const Duration(milliseconds: 180),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const HistoryPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curve = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            );
+            return FadeTransition(
+              opacity: curve,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.015, 0),
+                  end: Offset.zero,
+                ).animate(curve),
+                child: child,
+              ),
+            );
+          },
         ),
       ),
     );
@@ -293,7 +312,7 @@ class _HistoryPageState extends State<HistoryPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        unawaited(_loadAllHistory());
+        unawaited(context.read<AppState>().loadAllHistoryForView());
       }
     });
   }
@@ -333,16 +352,6 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       ),
     );
-  }
-
-  Future<void> _loadAllHistory() async {
-    final state = context.read<AppState>();
-    while (mounted && state.hasMoreHistory) {
-      final loaded = await state.loadMoreHistory();
-      if (!loaded) {
-        break;
-      }
-    }
   }
 
   void _goWorkspace() {
@@ -747,6 +756,24 @@ class _HistoryPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (state.isHistoryLoading && state.history.isEmpty) {
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _shellBorder),
+          color: _surface,
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
     if (state.history.isEmpty) {
       return Container(
         width: double.infinity,
