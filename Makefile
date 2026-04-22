@@ -1,8 +1,6 @@
-FLUTTER ?= $(HOME)/flutter/bin/flutter
-DART ?= $(HOME)/flutter/bin/dart
 PYTHON ?= python3
-WEB_WASM ?= false
-WEB_RUN_MODE ?= profile
+WEB_BASE_HREF ?= /
+WEB_API_BASE_URL ?= http://127.0.0.1:3000
 
 
 install:
@@ -12,37 +10,20 @@ install-dev:
 	$(PYTHON) -m pip install -r requirements-dev.txt
 
 client-deps:
-	cd client && $(FLUTTER) pub get
+	@echo "Static web client has no dependency install step."
 
 dev: client-deps
 	@bash -c 'set -euo pipefail; \
 	trap "kill 0" EXIT INT TERM; \
-	MODE_FLAG=""; \
-	case "$(WEB_RUN_MODE)" in \
-	  debug) MODE_FLAG="--debug" ;; \
-	  profile) MODE_FLAG="--profile" ;; \
-	  release) MODE_FLAG="--release" ;; \
-	  *) echo "Unsupported WEB_RUN_MODE=$(WEB_RUN_MODE). Use debug|profile|release." >&2; exit 1 ;; \
-	esac; \
-	WASM_FLAG=""; \
-	if [ "$(WEB_WASM)" = "true" ]; then WASM_FLAG="--wasm"; fi; \
+	WEB_BASE_HREF="$(WEB_BASE_HREF)" API_BASE_URL="$(WEB_API_BASE_URL)" BUILD_SHA=dev ./deploy/build_web_static.sh build/web-dev; \
 	$(PYTHON) -m uvicorn backend.main:app --reload --port $${PORT:-3000} & \
-	cd client && $(FLUTTER) run $$MODE_FLAG -d web-server --web-hostname 127.0.0.1 --web-port 8080 $$WASM_FLAG'
-
-dev-debug:
-	@$(MAKE) dev WEB_RUN_MODE=debug
-
-dev-profile:
-	@$(MAKE) dev WEB_RUN_MODE=profile
-
-dev-release:
-	@$(MAKE) dev WEB_RUN_MODE=release
+	$(PYTHON) -m http.server --directory build/web-dev 8080'
 
 test-backend:
 	$(PYTHON) -m pytest
 
 test-client: client-deps
-	cd client && $(FLUTTER) test
+	$(PYTHON) tools/check_web_static.py
 
 test: test-backend test-client
 
@@ -52,22 +33,20 @@ lint-backend:
 	$(PYTHON) -m mypy backend
 
 lint-client: client-deps
-	cd client && $(DART) format --output=none --set-exit-if-changed lib test
-	cd client && $(FLUTTER) analyze --no-version-check
+	$(PYTHON) tools/check_web_static.py
 
 lint: lint-backend lint-client
 
 lint-fix:
 	$(PYTHON) -m ruff check backend --fix
 	$(PYTHON) -m ruff format backend
-	cd client && $(DART) fix --apply
-	cd client && $(DART) format lib test
+	@echo "No static web auto-fix configured."
 
 format-backend:
 	$(PYTHON) -m ruff format backend
 
 format-client:
-	cd client && dart format lib test
+	@echo "No static web formatter configured."
 
 format: format-backend format-client
 

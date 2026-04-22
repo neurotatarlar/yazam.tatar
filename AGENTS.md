@@ -4,7 +4,9 @@ This file defines frontend and backend rules for this repository.
 
 ## Scope
 
-- Frontend code lives in `client/lib/`.
+- Frontend web code lives in `webapp/` (HTML/CSS/JS).
+- Shared frontend assets and i18n live in `client/assets/`.
+- Legacy Flutter code in `client/lib/` is reference-only and not part of deployment.
 - Product type: grammar correction tool (GEC), not open-ended chat.
 - Backend code lives in `backend/`.
 
@@ -67,10 +69,7 @@ Applicable principles used here:
 
 ## Flutter Implementation Rules
 
-- Keep business logic in `AppState`/stores, not deep in widgets.
-- Split large widget trees into focused private widgets.
-- Keep async UI code safe for unmounted contexts.
-- Do not add dependencies without clear product need.
+- Legacy-only: apply these rules only when touching reference Flutter code under `client/lib/`.
 
 ## Backend Rules
 

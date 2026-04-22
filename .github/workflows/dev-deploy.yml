@@ -8,6 +8,9 @@ on:
     paths:
       - "backend/**"
       - "client/**"
+      - "webapp/**"
+      - "tools/check_web_static.py"
+      - "deploy/build_web_static.sh"
       - "requirements*.txt"
       - "pyproject.toml"
   workflow_dispatch:
@@ -99,10 +102,11 @@ jobs:
               - "pyproject.toml"
             client:
               - "client/**"
+              - "webapp/**"
+              - "tools/check_web_static.py"
+              - "deploy/build_web_static.sh"
             client_deps:
-              - "client/pubspec.yaml"
-              - "client/pubspec.lock"
-              - "client/pubspec_overrides.yaml"
+              - "client/assets/**"
 
   backend:
     runs-on: ubuntu-latest
@@ -166,45 +170,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
       - name: Lint client
-        env:
-          FLUTTER: flutter
-          DART: dart
         run: make lint-client
 
       - name: Test client
-        env:
-          FLUTTER: flutter
-          DART: dart
         run: make test-client
 
       - name: Build web bundle
         env:
           WEB_BASE_HREF: ${{ needs.target.outputs.web_base_href }}
           API_BASE_URL: ${{ needs.target.outputs.api_base_url }}
+          BUILD_SHA: ${{ github.sha }}
         run: |
           sudo apt-get update
           sudo apt-get install -y brotli
-          WASM_FLAG=""
-          if [ "${WEB_WASM:-true}" = "true" ]; then
-            WASM_FLAG="--wasm"
-          fi
-          python -c "import json, os; from pathlib import Path; path = Path('client/assets/config.json'); data = json.loads(path.read_text()); data['baseUrl'] = os.environ['API_BASE_URL']; data['buildSha'] = os.environ.get('GITHUB_SHA', ''); path.write_text(json.dumps(data, indent=2) + '\\n')"
-          cd client
-          rm -rf build/web
-          flutter pub get
-          flutter build web --base-href "$WEB_BASE_HREF" $WASM_FLAG --tree-shake-icons
-          if [ "${WEB_WASM:-true}" = "true" ]; then
-            python -c "from pathlib import Path; path = Path('build/web/index.html'); text = path.read_text(); needle = '<link rel=\"preload\" href=\"flutter_bootstrap.js\" as=\"script\">'; wasm = '<link rel=\"preload\" href=\"main.dart.wasm\" as=\"fetch\" type=\"application/wasm\" crossorigin>'; text = text if wasm in text else text.replace(needle, f\"{needle}\\n  {wasm}\"); path.write_text(text)"
-          fi
-          bash ../deploy/precompress_web.sh build/web
-          tar -czf ../web.tar.gz -C build/web .
+          WEB_BASE_HREF="$WEB_BASE_HREF" \
+            API_BASE_URL="$API_BASE_URL" \
+            BUILD_SHA="$BUILD_SHA" \
+            ./deploy/build_web_static.sh build/web
+          bash deploy/precompress_web.sh build/web
+          tar -czf web.tar.gz -C build/web .
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v6

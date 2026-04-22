@@ -34,32 +34,21 @@ jobs:
           python -m pip install -r requirements.txt
           python -m build --wheel --outdir dist
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
       - name: Install web compression tools
         run: |
           sudo apt-get update
           sudo apt-get install -y brotli
 
       - name: Build web
+        env:
+          BUILD_SHA: ${{ github.sha }}
         run: |
-          cd client
-          WASM_FLAG=""
-          if [ "${WEB_WASM:-true}" = "true" ]; then
-            WASM_FLAG="--wasm"
-          fi
-          flutter pub get
-          rm -rf build/web
-          flutter build web --base-href / $WASM_FLAG --tree-shake-icons
-          if [ "${WEB_WASM:-true}" = "true" ]; then
-            python -c "from pathlib import Path; path = Path('build/web/index.html'); text = path.read_text(); needle = '<link rel=\"preload\" href=\"flutter_bootstrap.js\" as=\"script\">'; wasm = '<link rel=\"preload\" href=\"main.dart.wasm\" as=\"fetch\" type=\"application/wasm\" crossorigin>'; text = text if wasm in text else text.replace(needle, f\"{needle}\\n  {wasm}\"); path.write_text(text)"
-          fi
-          bash ../deploy/precompress_web.sh build/web
-          tar -czf ../dist/gec-tt-web.tar.gz -C build/web .
+          WEB_BASE_HREF=/ \
+            API_BASE_URL=/api \
+            BUILD_SHA="$BUILD_SHA" \
+            ./deploy/build_web_static.sh build/web
+          bash deploy/precompress_web.sh build/web
+          tar -czf dist/gec-tt-web.tar.gz -C build/web .
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="tt">
+<head>
+  <base href="__BASE_HREF__">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="description" content="Yazam.Tatar is a grammar correction service for Tatar text. Paste your original text and get a corrected version instantly.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="theme-color" content="#F1EEE7">
+  <link rel="canonical" href="https://yazam.tatar/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Yazam.Tatar">
+  <meta property="og:title" content="Yazam.Tatar">
+  <meta property="og:description" content="Grammar correction for Tatar text: Original text -> Correction.">
+  <meta property="og:url" content="https://yazam.tatar/">
+  <meta property="og:image" content="https://yazam.tatar/icons/Icon-512.png">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Yazam.Tatar">
+  <meta name="twitter:description" content="Grammar correction for Tatar text.">
+  <meta name="twitter:image" content="https://yazam.tatar/icons/Icon-512.png">
+
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>Yazam.Tatar</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="boot-shell" aria-hidden="true">
+    <div class="boot-header">
+      <div class="boot-brand shimmer"></div>
+      <div class="boot-lang shimmer"></div>
+    </div>
+    <div class="boot-content">
+      <aside class="boot-sidebar">
+        <div class="boot-nav-line long shimmer"></div>
+        <div class="boot-nav-line long shimmer"></div>
+        <div class="boot-nav-line short shimmer"></div>
+      </aside>
+      <main class="boot-main">
+        <div class="boot-panel shimmer"></div>
+        <div class="boot-actions shimmer"></div>
+      </main>
+    </div>
+  </div>
+
+  <div id="app" class="app" hidden>
+    <header class="topbar">
+      <button id="brand-button" class="brand" type="button" aria-label="YAZAM.TATAR">
+        <img src="assets/brand/tulip.png" alt="" width="26" height="26">
+        <span>YAZAM.TATAR</span>
+      </button>
+      <nav class="language-pill" aria-label="Language">
+        <button id="lang-tt" type="button" class="lang-btn">TT</button>
+        <span>/</span>
+        <button id="lang-en" type="button" class="lang-btn">EN</button>
+        <span>/</span>
+        <button id="lang-ru" type="button" class="lang-btn">RU</button>
+      </nav>
+    </header>
+
+    <div class="shell-body">
+      <aside class="sidebar">
+        <div class="sidebar-accent"></div>
+        <button id="nav-workspace" type="button" class="side-item selected">
+          <span class="side-icon">✎</span>
+          <span data-i18n="nav.workspace"></span>
+        </button>
+        <button id="nav-history" type="button" class="side-item">
+          <span class="side-icon">↺</span>
+          <span data-i18n="history.title"></span>
+        </button>
+
+        <div class="support-row">
+          <span class="support-heart">♥</span>
+          <span data-i18n="nav.support"></span>
+          <a class="donation-link" href="https://www.tbank.ru/cf/5DeXHs3nnOy" target="_blank" rel="noopener" data-i18n-title="support.tbank">
+            <img data-defer-src="assets/support/tbank_shield.png" src="" alt="TBank" width="20" height="20">
+          </a>
+          <a class="donation-link" href="https://revolut.me/gaydmi" target="_blank" rel="noopener" data-i18n-title="support.revolut">
+            <img data-defer-src="assets/support/revolut_r.png" src="" alt="Revolut" width="20" height="20">
+          </a>
+        </div>
+
+        <div class="sidebar-spacer"></div>
+
+        <section class="partners">
+          <h2 data-i18n="partners.title"></h2>
+          <div class="partner-minmol">
+            <img data-defer-src="assets/partners/minmol_mark.png" src="" alt="" width="46" height="46">
+            <span data-i18n="partners.minmolName"></span>
+          </div>
+          <img class="partner-tatfor" data-defer-src="assets/partners/tatfor.png" src="" alt="TatForum">
+        </section>
+      </aside>
+
+      <main class="main-area">
+        <section id="workspace-page" class="page workspace-page">
+          <div class="workspace-panel">
+            <article class="pane pane-original">
+              <h3 data-i18n="panel.original"></h3>
+              <textarea id="original-input" spellcheck="false"></textarea>
+            </article>
+            <article class="pane pane-corrected">
+              <div class="corrected-head">
+                <h3 data-i18n="panel.corrected"></h3>
+                <div id="streaming-state" class="streaming-state" hidden>
+                  <span class="dot"></span>
+                  <span data-i18n="status.correcting"></span>
+                </div>
+              </div>
+              <div id="corrected-output" class="corrected-output"></div>
+            </article>
+          </div>
+
+          <section class="action-bar">
+            <div class="action-left">
+              <button id="btn-correct" class="btn btn-primary" type="button">
+                <span data-i18n="actions.correctText"></span>
+              </button>
+              <button id="btn-stop" class="btn btn-outline" type="button" hidden>
+                <span data-i18n="actions.stopped"></span>
+              </button>
+              <span class="divider"></span>
+              <button id="btn-copy" class="btn-icon" type="button" data-i18n-title="actions.copy">⧉</button>
+              <button id="btn-clear" class="btn-icon danger" type="button" data-i18n-title="actions.clearOriginal">🗑</button>
+            </div>
+            <div class="metrics">
+              <span id="metric-words"></span>
+              <span id="metric-chars"></span>
+            </div>
+          </section>
+        </section>
+
+        <section id="history-page" class="page history-page" hidden>
+          <div id="history-list" class="history-list"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

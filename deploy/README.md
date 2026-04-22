@@ -4,6 +4,10 @@ This repo uses lightweight VPS deploys (no Docker) through GitHub Actions with t
 - `demo`: deployed on push to `master`, served under `/app` with API at `/app/api`
 - `production`: deployed on push to `release`, served from `/` with API at `/api`
 
+Web UI artifacts are assembled from:
+- `webapp/` (HTML/CSS/JS shell)
+- `client/assets/` (i18n, logos, fonts, config)
+
 ## Paths and services
 - Backend venv: `/opt/gec_tt/venv`
 - Backend config: `/opt/gec_tt/.env`
