@@ -58,6 +58,7 @@ flutter:
     - assets/i18n/ru.json
     - assets/brand/tulip.png
     - assets/partners/minmol.png
+    - assets/partners/minmol_mark.png
     - assets/partners/tatfor.png
     - assets/support/tbank_shield.png
     - assets/support/revolut_r.png

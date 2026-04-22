@@ -532,14 +532,52 @@ class _Sidebar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const _PartnerLogo(
-                  assetPath: 'assets/partners/minmol.png',
+                _PartnerMinmol(
+                  state: state,
                 ),
                 const SizedBox(height: 8),
                 const _PartnerLogo(
                   assetPath: 'assets/partners/tatfor.png',
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PartnerMinmol extends StatelessWidget {
+  const _PartnerMinmol({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 68),
+      child: Row(
+        children: [
+          Image.asset(
+            'assets/partners/minmol_mark.png',
+            width: 46,
+            height: 46,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              state.t('partners.minmolName'),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w700,
+                color: _text.withValues(alpha: 0.82),
+                height: 1.15,
+              ),
             ),
           ),
         ],
