@@ -59,6 +59,8 @@ flutter:
     - assets/brand/tulip.png
     - assets/partners/minmol.png
     - assets/partners/tatfor.png
+    - assets/support/tbank_shield.png
+    - assets/support/revolut_r.png
     - assets/fonts/Inter-Variable.ttf
     - assets/fonts/Manrope-Variable.ttf
     - assets/fonts/Newsreader-Variable.ttf

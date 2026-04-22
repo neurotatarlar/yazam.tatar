@@ -25,6 +25,7 @@ const _sidebarWidth = 256.0;
 const _headerHeight = 64.0;
 const _wordmark = 'YAZAM.TATAR';
 const _tbankDonationUrl = 'https://www.tbank.ru/cf/5DeXHs3nnOy';
+const _revolutDonationUrl = 'https://revolut.me/gaydmi';
 
 enum _ShellSection { workspace, history }
 
@@ -512,11 +513,9 @@ class _Sidebar extends StatelessWidget {
             selected: section == _ShellSection.history,
             onTap: section == _ShellSection.history ? null : onOpenHistory,
           ),
-          _SidebarItem(
-            icon: Icons.favorite,
-            label: state.t('nav.support'),
-            iconColor: const Color(0xFFF43F5E),
-            onTap: () => unawaited(onOpenSupport(_tbankDonationUrl)),
+          _SupportItem(
+            state: state,
+            onOpenSupport: onOpenSupport,
           ),
           const Spacer(),
           Padding(
@@ -577,19 +576,16 @@ class _SidebarItem extends StatelessWidget {
     required this.label,
     this.selected = false,
     this.onTap,
-    this.iconColor,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback? onTap;
-  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
     final fg = selected ? _brandColor : _text.withValues(alpha: 0.72);
-    final iconTint = iconColor ?? fg;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -604,7 +600,7 @@ class _SidebarItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Row(
             children: [
-              Icon(icon, size: 18, color: iconTint),
+              Icon(icon, size: 18, color: fg),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -618,6 +614,87 @@ class _SidebarItem extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SupportItem extends StatelessWidget {
+  const _SupportItem({required this.state, required this.onOpenSupport});
+
+  final AppState state;
+  final Future<void> Function(String url) onOpenSupport;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.favorite,
+              size: 18,
+              color: Color(0xFFF43F5E),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                state.t('nav.support'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: _text.withValues(alpha: 0.72),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _DonationImageGlyph(
+              assetPath: 'assets/support/tbank_shield.png',
+              tooltip: state.t('support.tbank'),
+              onTap: () => unawaited(onOpenSupport(_tbankDonationUrl)),
+            ),
+            const SizedBox(width: 6),
+            _DonationImageGlyph(
+              assetPath: 'assets/support/revolut_r.png',
+              tooltip: state.t('support.revolut'),
+              onTap: () => unawaited(onOpenSupport(_revolutDonationUrl)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DonationImageGlyph extends StatelessWidget {
+  const _DonationImageGlyph({
+    required this.assetPath,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final String assetPath;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: Image.asset(
+            assetPath,
+            fit: BoxFit.contain,
           ),
         ),
       ),
