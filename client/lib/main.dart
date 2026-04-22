@@ -283,13 +283,7 @@ class _HomePageState extends State<HomePage> {
             );
             return FadeTransition(
               opacity: curve,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0.015, 0),
-                  end: Offset.zero,
-                ).animate(curve),
-                child: child,
-              ),
+              child: child,
             );
           },
         ),
