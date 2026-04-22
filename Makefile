@@ -2,6 +2,7 @@ FLUTTER ?= $(HOME)/flutter/bin/flutter
 DART ?= $(HOME)/flutter/bin/dart
 PYTHON ?= python3
 WEB_WASM ?= false
+WEB_RUN_MODE ?= profile
 
 
 install:
@@ -16,10 +17,26 @@ client-deps:
 dev: client-deps
 	@bash -c 'set -euo pipefail; \
 	trap "kill 0" EXIT INT TERM; \
+	MODE_FLAG=""; \
+	case "$(WEB_RUN_MODE)" in \
+	  debug) MODE_FLAG="--debug" ;; \
+	  profile) MODE_FLAG="--profile" ;; \
+	  release) MODE_FLAG="--release" ;; \
+	  *) echo "Unsupported WEB_RUN_MODE=$(WEB_RUN_MODE). Use debug|profile|release." >&2; exit 1 ;; \
+	esac; \
 	WASM_FLAG=""; \
 	if [ "$(WEB_WASM)" = "true" ]; then WASM_FLAG="--wasm"; fi; \
 	$(PYTHON) -m uvicorn backend.main:app --reload --port $${PORT:-3000} & \
-	cd client && $(FLUTTER) run -d web-server --web-hostname 127.0.0.1 --web-port 8080 $$WASM_FLAG'
+	cd client && $(FLUTTER) run $$MODE_FLAG -d web-server --web-hostname 127.0.0.1 --web-port 8080 $$WASM_FLAG'
+
+dev-debug:
+	@$(MAKE) dev WEB_RUN_MODE=debug
+
+dev-profile:
+	@$(MAKE) dev WEB_RUN_MODE=profile
+
+dev-release:
+	@$(MAKE) dev WEB_RUN_MODE=release
 
 test-backend:
 	$(PYTHON) -m pytest

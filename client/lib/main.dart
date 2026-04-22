@@ -76,7 +76,6 @@ class MyApp extends StatelessWidget {
       fontFamily: 'Inter',
       fontFamilyFallback: const [
         'Manrope',
-        'Newsreader',
         'Noto Sans',
         'Noto Sans UI',
         'Segoe UI',
@@ -108,7 +107,8 @@ class MyApp extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
         bodyLarge: baseText.bodyLarge?.copyWith(
-          fontFamily: 'Newsreader',
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w500,
           fontSize: 20,
           height: 1.55,
         ),
@@ -469,7 +469,7 @@ class _LanguagePill extends StatelessWidget {
   }
 }
 
-class _Sidebar extends StatelessWidget {
+class _Sidebar extends StatefulWidget {
   const _Sidebar({
     required this.state,
     required this.section,
@@ -485,7 +485,39 @@ class _Sidebar extends StatelessWidget {
   final VoidCallback? onOpenHistory;
 
   @override
+  State<_Sidebar> createState() => _SidebarState();
+}
+
+class _SidebarState extends State<_Sidebar> {
+  Timer? _nonCriticalAssetsTimer;
+  bool _showNonCriticalAssets = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _nonCriticalAssetsTimer = Timer(const Duration(milliseconds: 450), () {
+        if (mounted) {
+          setState(() {
+            _showNonCriticalAssets = true;
+          });
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _nonCriticalAssetsTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     return Container(
       width: _sidebarWidth,
       decoration: const BoxDecoration(
@@ -507,18 +539,23 @@ class _Sidebar extends StatelessWidget {
           _SidebarItem(
             icon: Icons.edit_note,
             label: state.t('nav.workspace'),
-            selected: section == _ShellSection.workspace,
-            onTap: section == _ShellSection.workspace ? null : onOpenWorkspace,
+            selected: widget.section == _ShellSection.workspace,
+            onTap: widget.section == _ShellSection.workspace
+                ? null
+                : widget.onOpenWorkspace,
           ),
           _SidebarItem(
             icon: Icons.history,
             label: state.t('history.title'),
-            selected: section == _ShellSection.history,
-            onTap: section == _ShellSection.history ? null : onOpenHistory,
+            selected: widget.section == _ShellSection.history,
+            onTap: widget.section == _ShellSection.history
+                ? null
+                : widget.onOpenHistory,
           ),
           _SupportItem(
             state: state,
-            onOpenSupport: onOpenSupport,
+            onOpenSupport: widget.onOpenSupport,
+            showGlyphs: _showNonCriticalAssets,
           ),
           const Spacer(),
           Padding(
@@ -537,10 +574,12 @@ class _Sidebar extends StatelessWidget {
                 const SizedBox(height: 10),
                 _PartnerMinmol(
                   state: state,
+                  showLogo: _showNonCriticalAssets,
                 ),
                 const SizedBox(height: 8),
-                const _PartnerLogo(
+                _PartnerLogo(
                   assetPath: 'assets/partners/tatfor.png',
+                  showLogo: _showNonCriticalAssets,
                 ),
               ],
             ),
@@ -552,9 +591,10 @@ class _Sidebar extends StatelessWidget {
 }
 
 class _PartnerMinmol extends StatelessWidget {
-  const _PartnerMinmol({required this.state});
+  const _PartnerMinmol({required this.state, required this.showLogo});
 
   final AppState state;
+  final bool showLogo;
 
   @override
   Widget build(BuildContext context) {
@@ -563,12 +603,15 @@ class _PartnerMinmol extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 68),
       child: Row(
         children: [
-          Image.asset(
-            'assets/partners/minmol_mark.png',
-            width: 46,
-            height: 46,
-            fit: BoxFit.contain,
-          ),
+          if (showLogo)
+            Image.asset(
+              'assets/partners/minmol_mark.png',
+              width: 46,
+              height: 46,
+              fit: BoxFit.contain,
+            )
+          else
+            const _DeferredImagePlaceholder(width: 46, height: 46),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -590,9 +633,10 @@ class _PartnerMinmol extends StatelessWidget {
 }
 
 class _PartnerLogo extends StatelessWidget {
-  const _PartnerLogo({required this.assetPath});
+  const _PartnerLogo({required this.assetPath, required this.showLogo});
 
   final String assetPath;
+  final bool showLogo;
 
   @override
   Widget build(BuildContext context) {
@@ -602,10 +646,12 @@ class _PartnerLogo extends StatelessWidget {
       child: FittedBox(
         alignment: Alignment.centerLeft,
         fit: BoxFit.scaleDown,
-        child: Image.asset(
-          assetPath,
-          height: 64,
-        ),
+        child: showLogo
+            ? Image.asset(
+                assetPath,
+                height: 64,
+              )
+            : const _DeferredImagePlaceholder(width: 190, height: 52),
       ),
     );
   }
@@ -663,10 +709,15 @@ class _SidebarItem extends StatelessWidget {
 }
 
 class _SupportItem extends StatelessWidget {
-  const _SupportItem({required this.state, required this.onOpenSupport});
+  const _SupportItem({
+    required this.state,
+    required this.onOpenSupport,
+    required this.showGlyphs,
+  });
 
   final AppState state;
   final Future<void> Function(String url) onOpenSupport;
+  final bool showGlyphs;
 
   @override
   Widget build(BuildContext context) {
@@ -698,12 +749,14 @@ class _SupportItem extends StatelessWidget {
               assetPath: 'assets/support/tbank_shield.png',
               tooltip: state.t('support.tbank'),
               onTap: () => unawaited(onOpenSupport(_tbankDonationUrl)),
+              enabled: showGlyphs,
             ),
             const SizedBox(width: 6),
             _DonationImageGlyph(
               assetPath: 'assets/support/revolut_r.png',
               tooltip: state.t('support.revolut'),
               onTap: () => unawaited(onOpenSupport(_revolutDonationUrl)),
+              enabled: showGlyphs,
             ),
           ],
         ),
@@ -717,28 +770,50 @@ class _DonationImageGlyph extends StatelessWidget {
     required this.assetPath,
     required this.tooltip,
     required this.onTap,
+    required this.enabled,
   });
 
   final String assetPath;
   final String tooltip;
   final VoidCallback onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
       child: InkWell(
-        onTap: onTap,
+        onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(6),
         child: SizedBox(
           width: 20,
           height: 20,
-          child: Image.asset(
-            assetPath,
-            fit: BoxFit.contain,
-          ),
+          child: enabled
+              ? Image.asset(
+                  assetPath,
+                  fit: BoxFit.contain,
+                )
+              : const _DeferredImagePlaceholder(width: 20, height: 20),
         ),
       ),
+    );
+  }
+}
+
+class _DeferredImagePlaceholder extends StatelessWidget {
+  const _DeferredImagePlaceholder({required this.width, required this.height});
+
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _surfaceHigh.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: SizedBox(width: width, height: height),
     );
   }
 }

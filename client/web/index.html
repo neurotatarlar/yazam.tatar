@@ -39,8 +39,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Yazam.Tatar">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-  <meta name="theme-color" content="#F1EEE7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#121412" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F1EEE7">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
@@ -67,80 +66,144 @@
       width: 100%;
       margin: 0;
       background: #F1EEE7;
+      color-scheme: only light;
     }
-    @media (prefers-color-scheme: dark) {
-      html, body {
-        background: #121412;
-      }
-    }
-    :root {
-      --shell-bg: #F1EEE7;
-      --shell-surface: #FBFAF7;
-      --shell-border: #E2DDD3;
-      --shell-text: #2F2B24;
-      --shell-accent: #4C6A5C;
-      --shell-shadow: rgba(34, 24, 14, 0.06);
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --shell-bg: #121412;
-        --shell-surface: #1C1F1C;
-        --shell-border: #2C322D;
-        --shell-text: #F1EEE7;
-        --shell-accent: #4C6A5C;
-        --shell-shadow: rgba(0, 0, 0, 0.25);
-      }
-    }
-    #app-spinner {
+    #boot-shell {
       position: fixed;
       inset: 0;
-      display: grid;
-      place-items: center;
+      display: flex;
+      flex-direction: column;
       pointer-events: none;
-      transition: opacity 160ms ease;
+      transition: opacity 180ms ease;
       z-index: 9999;
+      background: #F1EEE7;
+      border: 1px solid rgba(156, 166, 186, 0.12);
     }
-    #app-spinner.hide {
+    #boot-shell.hide {
       opacity: 0;
     }
-    .spinner-ring {
-      width: 72px;
+    .boot-header {
+      height: 64px;
+      border-bottom: 1px solid rgba(156, 166, 186, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      background: #F8FAFC;
+    }
+    .boot-brand {
+      width: 160px;
+      height: 14px;
+      border-radius: 4px;
+      background: #dbe2ef;
+    }
+    .boot-lang {
+      width: 90px;
+      height: 20px;
+      border-radius: 4px;
+      background: #e5e9f2;
+    }
+    .boot-content {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+    }
+    .boot-sidebar {
+      width: 256px;
+      border-right: 1px solid rgba(156, 166, 186, 0.12);
+      background: #F1F5F9;
+      padding: 26px 16px;
+    }
+    .boot-nav-line {
+      height: 13px;
+      border-radius: 4px;
+      background: #dbe2ef;
+      margin-bottom: 14px;
+    }
+    .boot-nav-line.short {
+      width: 64%;
+    }
+    .boot-nav-line.long {
+      width: 82%;
+    }
+    .boot-main {
+      flex: 1;
+      min-width: 0;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .boot-panel {
+      height: min(42vh, 380px);
+      min-height: 280px;
+      border-radius: 10px;
+      border: 1px solid rgba(156, 166, 186, 0.2);
+      background: #f5f6fb;
+    }
+    .boot-actions {
       height: 72px;
-      border-radius: 50%;
-      border: 3px solid rgba(76, 106, 92, 0.25);
-      border-top-color: rgba(76, 106, 92, 0.9);
-      animation: spin 0.8s linear infinite;
+      border-radius: 10px;
+      border: 1px solid rgba(156, 166, 186, 0.2);
+      background: #eceff9;
     }
-    @media (prefers-color-scheme: dark) {
-      .spinner-ring {
-        border-color: rgba(92, 120, 104, 0.3);
-        border-top-color: rgba(92, 120, 104, 0.95);
+    .boot-shimmer {
+      background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.45) 50%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      background-size: 260px 100%;
+      animation: bootShimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes bootShimmer {
+      from { background-position: -260px 0; }
+      to { background-position: calc(100% + 260px) 0; }
+    }
+    @media (max-width: 980px) {
+      .boot-sidebar {
+        display: none;
       }
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+      .boot-main {
+        padding: 16px;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="app-spinner" aria-hidden="true">
-    <div class="spinner-ring"></div>
+  <div id="boot-shell" aria-hidden="true">
+    <div class="boot-header">
+      <div class="boot-brand boot-shimmer"></div>
+      <div class="boot-lang boot-shimmer"></div>
+    </div>
+    <div class="boot-content">
+      <aside class="boot-sidebar">
+        <div class="boot-nav-line long boot-shimmer"></div>
+        <div class="boot-nav-line long boot-shimmer"></div>
+        <div class="boot-nav-line short boot-shimmer"></div>
+      </aside>
+      <main class="boot-main">
+        <div class="boot-panel boot-shimmer"></div>
+        <div class="boot-actions boot-shimmer"></div>
+      </main>
+    </div>
   </div>
   <script>
     (function () {
-      var spinner = document.getElementById('app-spinner');
-      function hideSpinner() {
-        if (!spinner) return;
-        spinner.classList.add('hide');
+      var shell = document.getElementById('boot-shell');
+      function hideShell() {
+        if (!shell) return;
+        shell.classList.add('hide');
         setTimeout(function () {
-          if (spinner && spinner.parentNode) {
-            spinner.parentNode.removeChild(spinner);
+          if (shell && shell.parentNode) {
+            shell.parentNode.removeChild(shell);
           }
         }, 240);
       }
-      window.addEventListener('flutter-first-frame', hideSpinner, { once: true });
+      window.addEventListener('flutter-first-frame', hideShell, { once: true });
       window.addEventListener('load', function () {
-        setTimeout(hideSpinner, 12000);
+        setTimeout(hideShell, 12000);
       });
     })();
   </script>

@@ -192,14 +192,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y brotli
           WASM_FLAG=""
-          if [ "${WEB_WASM:-false}" = "true" ]; then
+          if [ "${WEB_WASM:-true}" = "true" ]; then
             WASM_FLAG="--wasm"
           fi
           python -c "import json, os; from pathlib import Path; path = Path('client/assets/config.json'); data = json.loads(path.read_text()); data['baseUrl'] = os.environ['API_BASE_URL']; data['buildSha'] = os.environ.get('GITHUB_SHA', ''); path.write_text(json.dumps(data, indent=2) + '\\n')"
           cd client
+          rm -rf build/web
           flutter pub get
           flutter build web --base-href "$WEB_BASE_HREF" $WASM_FLAG --tree-shake-icons
-          if [ "${WEB_WASM:-false}" = "true" ]; then
+          if [ "${WEB_WASM:-true}" = "true" ]; then
             python -c "from pathlib import Path; path = Path('build/web/index.html'); text = path.read_text(); needle = '<link rel=\"preload\" href=\"flutter_bootstrap.js\" as=\"script\">'; wasm = '<link rel=\"preload\" href=\"main.dart.wasm\" as=\"fetch\" type=\"application/wasm\" crossorigin>'; text = text if wasm in text else text.replace(needle, f\"{needle}\\n  {wasm}\"); path.write_text(text)"
           fi
           bash ../deploy/precompress_web.sh build/web
