@@ -159,21 +159,6 @@ textarea {
   font-size: 15px;
 }
 
-.support-row {
-  margin: 3px 10px;
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: color-mix(in srgb, var(--text) 72%, transparent);
-}
-
-.support-heart {
-  color: #f43f5e;
-  font-size: 18px;
-  margin-right: 2px;
-}
-
 .donation-link {
   display: inline-flex;
   align-items: center;
@@ -204,7 +189,8 @@ textarea {
   padding: 8px 18px 20px;
 }
 
-.partners h2 {
+.partners h2,
+.support-panel h2 {
   margin: 0;
   font-size: 11px;
   letter-spacing: 1px;
@@ -245,6 +231,25 @@ textarea {
   line-height: 1.15;
   font-weight: 700;
   color: color-mix(in srgb, var(--text) 82%, transparent);
+}
+
+.support-panel {
+  padding: 2px 18px 20px;
+}
+
+.support-links {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.donation-link-large {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--shell-border);
+  border-radius: 6px;
+  background: var(--surface);
 }
 
 .main-area {
