@@ -185,14 +185,14 @@ textarea {
 
 .donation-link img,
 .partner-minmol img,
-.partner-tatfor {
+.partner-tatfor img {
   opacity: 0;
   transition: opacity 220ms ease;
 }
 
 .donation-link img.ready,
 .partner-minmol img.ready,
-.partner-tatfor.ready {
+.partner-tatfor img.ready {
   opacity: 1;
 }
 
@@ -232,10 +232,19 @@ textarea {
 
 .partner-tatfor {
   margin-top: 8px;
-  width: 100%;
-  max-height: 64px;
-  object-fit: contain;
-  object-position: left center;
+  min-height: 68px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.partner-tatfor span {
+  white-space: pre-line;
+  font-family: Manrope, Inter, sans-serif;
+  font-size: 15px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--text) 82%, transparent);
 }
 
 .main-area {
