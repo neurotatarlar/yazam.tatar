@@ -14,6 +14,7 @@
   "empty.title": "Төзәтелгән текст монда булыр",
   "input.placeholder": "Төзәтү өчен текст языгыз…",
   "actions.copy": "Копия яса",
+  "actions.focusMode": "Игътибар режимы",
   "actions.correctText": "Төзәт",
   "actions.clearOriginal": "Бетер",
   "metrics.words": "Сүзләр: {count}",

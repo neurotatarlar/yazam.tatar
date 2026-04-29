@@ -1,7 +1,7 @@
 {
   "actions.copied": "Copied",
   "errors.copyFailed": "Copy failed",
-  "actions.stopped": "Stopped",
+  "actions.stopped": "Stop",
   "status.correcting": "Correcting…",
   "status.error": "Error",
   "panel.original": "Original text",
@@ -14,6 +14,7 @@
   "empty.title": "Your corrections will appear here.",
   "input.placeholder": "Type text to correct…",
   "actions.copy": "Copy",
+  "actions.focusMode": "Focus mode",
   "actions.correctText": "Correct text",
   "actions.clearOriginal": "Clear original",
   "metrics.words": "Words: {count}",

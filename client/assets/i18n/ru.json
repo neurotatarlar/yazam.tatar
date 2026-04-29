@@ -14,6 +14,7 @@
   "empty.title": "Исправления появятся здесь.",
   "input.placeholder": "Введите текст для исправления…",
   "actions.copy": "Копировать",
+  "actions.focusMode": "Режим фокуса",
   "actions.correctText": "Исправить текст",
   "actions.clearOriginal": "Очистить исходный",
   "metrics.words": "Слова: {count}",

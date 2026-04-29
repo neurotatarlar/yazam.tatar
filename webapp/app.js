@@ -27,6 +27,7 @@
     btnCorrect: document.getElementById('btn-correct'),
     btnStop: document.getElementById('btn-stop'),
     btnCopy: document.getElementById('btn-copy'),
+    btnFocus: document.getElementById('btn-focus'),
     btnClear: document.getElementById('btn-clear'),
     metricWords: document.getElementById('metric-words'),
     metricChars: document.getElementById('metric-chars'),
@@ -50,6 +51,7 @@
     requestId: '',
     activeOriginal: '',
     activeTimestamp: null,
+    focusMode: false,
     streamAbort: null,
     history: [],
   };
@@ -262,6 +264,10 @@
     refs.historyPage.hidden = workspaceSelected;
   }
 
+  function renderLayout() {
+    refs.app.classList.toggle('focus-mode', state.focusMode);
+  }
+
   function renderOutput() {
     const showStreaming = state.isStreaming;
     refs.streamingState.classList.toggle('is-hidden', !showStreaming);
@@ -301,6 +307,7 @@
     refs.btnStop.hidden = !state.isStreaming;
     refs.btnCorrect.disabled = !canSubmit;
     refs.btnCopy.disabled = !canCopy;
+    refs.btnFocus.classList.toggle('active', state.focusMode);
   }
 
   function renderHistory() {
@@ -358,6 +365,7 @@
   }
 
   function render() {
+    renderLayout();
     refs.originalInput.value = state.originalText;
     renderText();
     renderLanguage();
@@ -592,6 +600,10 @@
     refs.btnCorrect.addEventListener('click', submitCorrection);
     refs.btnStop.addEventListener('click', stopStreaming);
     refs.btnCopy.addEventListener('click', copyCorrection);
+    refs.btnFocus.addEventListener('click', () => {
+      state.focusMode = !state.focusMode;
+      render();
+    });
     refs.btnClear.addEventListener('click', () => {
       state.originalText = '';
       state.activeOriginal = '';

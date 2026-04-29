@@ -261,6 +261,8 @@ textarea {
 .main-area {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
   padding: 24px;
   border: 1px solid var(--shell-border);
   border-left: 0;
@@ -271,9 +273,13 @@ textarea {
   animation: fadein 180ms ease;
 }
 
+.workspace-page {
+  display: flex;
+  flex-direction: column;
+}
+
 .workspace-panel {
-  min-height: min(42vh, 380px);
-  max-height: 380px;
+  height: clamp(380px, 64vh, 860px);
   border-radius: 10px;
   border: 1px solid var(--shell-border);
   overflow: hidden;
@@ -286,6 +292,8 @@ textarea {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .pane h3 {
@@ -355,6 +363,8 @@ textarea {
 }
 
 .corrected-output {
+  flex: 1;
+  min-height: 0;
   margin-top: 12px;
   overflow: auto;
   white-space: pre-wrap;
@@ -374,12 +384,16 @@ textarea {
   margin-top: 20px;
   border-radius: 10px;
   background: var(--surface-high);
+  border: 1px solid var(--shell-border);
   padding: 10px 12px;
   min-height: 42px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  position: sticky;
+  bottom: 12px;
+  z-index: 8;
 }
 
 .action-left {
@@ -432,6 +446,10 @@ textarea {
 
 .btn-icon.danger {
   color: var(--danger);
+}
+
+.btn-icon.active {
+  color: var(--brand);
 }
 
 .metrics {
@@ -631,6 +649,14 @@ textarea {
   to { transform: rotate(360deg); }
 }
 
+.app.focus-mode .workspace-panel {
+  height: clamp(460px, 76vh, 1080px);
+}
+
+.app.focus-mode .main-area {
+  padding-bottom: 10px;
+}
+
 @media (max-width: 1440px) {
   .topbar {
     padding: 0 20px;
@@ -697,9 +723,8 @@ textarea {
   }
 
   .workspace-panel {
+    height: clamp(340px, 58vh, 720px);
     grid-template-columns: 1fr;
-    max-height: none;
-    min-height: 0;
   }
 
   .pane-original {
@@ -729,6 +754,10 @@ textarea {
 
   .boot-main {
     padding: 16px;
+  }
+
+  .app.focus-mode .workspace-panel {
+    height: clamp(460px, 74vh, 980px);
   }
 }
 
@@ -763,7 +792,7 @@ textarea {
 
   .pane-original,
   .pane-corrected {
-    min-height: 190px;
+    min-height: 170px;
   }
 
   #original-input,
@@ -785,6 +814,7 @@ textarea {
   .action-bar {
     flex-direction: column;
     align-items: flex-start;
+    bottom: 8px;
   }
 
   .metrics {
@@ -796,6 +826,11 @@ textarea {
   .partner-minmol span,
   .partner-tatfor span {
     font-size: 13px;
+  }
+
+  .workspace-panel,
+  .app.focus-mode .workspace-panel {
+    height: clamp(340px, 62vh, 620px);
   }
 }
 
