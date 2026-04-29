@@ -263,7 +263,9 @@
   }
 
   function renderOutput() {
-    refs.streamingState.hidden = !state.isStreaming;
+    const showStreaming = state.isStreaming;
+    refs.streamingState.classList.toggle('is-hidden', !showStreaming);
+    refs.streamingState.setAttribute('aria-hidden', String(!showStreaming));
 
     if (state.errorMessage) {
       refs.correctedOutput.textContent = state.errorMessage;
@@ -280,7 +282,7 @@
     }
 
     if (state.isStreaming) {
-      refs.correctedOutput.textContent = t('status.correcting');
+      refs.correctedOutput.textContent = '';
       refs.correctedOutput.classList.remove('error');
       refs.correctedOutput.classList.remove('placeholder');
       return;
