@@ -154,7 +154,7 @@ jobs:
           python -m build --wheel --outdir dist
 
       - name: Upload backend artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: backend-wheel
           path: dist/*.whl
@@ -192,7 +192,7 @@ jobs:
           tar -czf web.tar.gz -C build/web .
 
       - name: Upload web artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: web-bundle
           path: web.tar.gz
