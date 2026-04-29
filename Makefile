@@ -13,11 +13,7 @@ client-deps:
 	@echo "Static web client has no dependency install step."
 
 dev: client-deps
-	@bash -c 'set -euo pipefail; \
-	trap "kill 0" EXIT INT TERM; \
-	WEB_BASE_HREF="$(WEB_BASE_HREF)" API_BASE_URL="$(WEB_API_BASE_URL)" BUILD_SHA=dev ./deploy/build_web_static.sh build/web-dev; \
-	$(PYTHON) -m uvicorn backend.main:app --reload --port $${PORT:-3000} & \
-	$(PYTHON) -m http.server --directory build/web-dev 8080'
+	@WEB_BASE_HREF="$(WEB_BASE_HREF)" API_BASE_URL="$(WEB_API_BASE_URL)" BUILD_SHA=dev PYTHON="$(PYTHON)" ./deploy/run_dev.sh build/web-dev
 
 test-backend:
 	$(PYTHON) -m pytest
