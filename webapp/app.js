@@ -594,9 +594,11 @@
     refs.btnCopy.addEventListener('click', copyCorrection);
     refs.btnClear.addEventListener('click', () => {
       state.originalText = '';
+      state.activeOriginal = '';
+      state.activeTimestamp = null;
+      resetOutputPane();
       refs.originalInput.value = '';
-      renderText();
-      renderButtons();
+      render();
     });
 
     refs.navWorkspace.addEventListener('click', () => {

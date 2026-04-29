@@ -28,6 +28,10 @@
   --success: #10b981;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -333,6 +337,10 @@ textarea {
   font-weight: 700;
   letter-spacing: 0.8px;
   text-transform: uppercase;
+}
+
+.streaming-state.is-hidden {
+  display: none;
 }
 
 .dot {
