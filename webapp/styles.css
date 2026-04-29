@@ -213,6 +213,7 @@ textarea {
 
 .partner-minmol span {
   white-space: pre-line;
+  overflow-wrap: anywhere;
   font-family: Manrope, Inter, sans-serif;
   font-size: 15px;
   line-height: 1.15;
@@ -230,6 +231,7 @@ textarea {
 
 .partner-tatfor span {
   white-space: pre-line;
+  overflow-wrap: anywhere;
   font-family: Manrope, Inter, sans-serif;
   font-size: 15px;
   line-height: 1.15;
@@ -629,7 +631,62 @@ textarea {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1440px) {
+  .topbar {
+    padding: 0 20px;
+  }
+
+  .main-area {
+    padding: 20px;
+  }
+
+  .pane {
+    padding: 20px;
+  }
+
+  #original-input,
+  .corrected-output {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 1240px) {
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .sidebar {
+    width: 232px;
+  }
+
+  .main-area {
+    padding: 18px;
+  }
+
+  .pane {
+    padding: 18px;
+  }
+
+  .action-bar {
+    flex-wrap: wrap;
+  }
+
+  .action-left {
+    flex-wrap: wrap;
+  }
+
+  .partner-minmol span,
+  .partner-tatfor span {
+    font-size: 14px;
+  }
+
+  #original-input,
+  .corrected-output {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 1080px) {
   .shell-body {
     flex-direction: column;
   }
@@ -656,11 +713,13 @@ textarea {
   }
 
   .action-bar {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .metrics {
+    margin-left: auto;
     gap: 16px;
   }
 
@@ -670,5 +729,111 @@ textarea {
 
   .boot-main {
     padding: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    height: auto;
+    min-height: 64px;
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .brand span {
+    font-size: 23px;
+    letter-spacing: 2px;
+  }
+
+  .language-pill {
+    padding: 7px 10px;
+  }
+
+  .sidebar {
+    padding-top: 14px;
+  }
+
+  .main-area {
+    padding: 14px;
+  }
+
+  .pane {
+    padding: 14px;
+  }
+
+  .pane-original,
+  .pane-corrected {
+    min-height: 190px;
+  }
+
+  #original-input,
+  .corrected-output {
+    font-size: 20px;
+    line-height: 1.45;
+  }
+
+  .corrected-head {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .streaming-state {
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .action-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metrics {
+    margin-left: 0;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .partner-minmol span,
+  .partner-tatfor span {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .brand span {
+    font-size: 19px;
+    letter-spacing: 1.4px;
+  }
+
+  .language-pill {
+    align-self: flex-end;
+  }
+
+  .side-item {
+    margin: 2px 8px;
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .workspace-panel {
+    border-radius: 8px;
+  }
+
+  .btn {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .divider {
+    display: none;
+  }
+
+  .btn-icon {
+    font-size: 18px;
   }
 }
