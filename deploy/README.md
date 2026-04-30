@@ -23,6 +23,8 @@ Web UI artifacts are assembled from:
 - `release package` (`.github/workflows/release.yml`): manual tagged package release
 - `full qa gate` (`.github/workflows/qa-full.yml`): automated reliability gate (backend lint/security/tests + integration/e2e smoke + web smoke tests)
 - `web smoke tests` (`.github/workflows/web-smoke.yml`): lightweight UI smoke checks for web changes
+- `dependency audits` (`.github/workflows/dependency-audit.yml`): weekly pip/npm vulnerability scans with `pip check`
+- `runtime observability checks` (`.github/workflows/runtime-observability.yml`): hourly checks for `/health`, `/status`, `/metrics` on public environments
 
 ## VPS preparation (first run)
 1) Install packages:
@@ -66,6 +68,10 @@ Per environment, optional vars:
 - `CERTBOT_EXTRA_DOMAINS` (comma-separated, example `www.yazam.tatar`)
 - `CERTBOT_RENEW_DRY_RUN` (`true`/`false`, default `false`)
 
+Repository vars used by `runtime observability checks`:
+- `PROD_HEALTH_URL`, `PROD_STATUS_URL`, `PROD_METRICS_URL` (optional; defaults point to `https://yazam.tatar/api/*`)
+- `DEMO_HEALTH_URL`, `DEMO_STATUS_URL`, `DEMO_METRICS_URL` (optional; if `DEMO_STATUS_URL` is unset, demo checks are skipped)
+
 Defaults by environment if `NGINX_SITE` is not set:
 - `demo` -> `/etc/nginx/sites-available/gec-annotation.conf`
 - `production` -> `/etc/nginx/sites-available/gec-tt.conf`
@@ -85,5 +91,10 @@ After DNS `A`/`AAAA` for `yazam.tatar` points to production host and ports `80/4
 TLS hardening applied by bootstrap:
 - HTTP to HTTPS redirect via certbot nginx integration
 - HSTS (`max-age=63072000; includeSubDomains; preload`)
+
+Nginx hardening defaults in deploy snippets:
+- strict method filtering on API/static routes
+- body and timeout limits for request handling
+- baseline security headers (`nosniff`, `DENY` framing, `Referrer-Policy`, `Permissions-Policy`)
 
 Note: DNS and cloud firewall/security-group rules are external infrastructure and must be configured outside GitHub Actions.

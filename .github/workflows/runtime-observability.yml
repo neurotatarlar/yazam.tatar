@@ -1,0 +1,51 @@
+name: runtime observability checks
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HEALTH_URL: ${{ vars.PROD_HEALTH_URL || 'https://yazam.tatar/api/health' }}
+      STATUS_URL: ${{ vars.PROD_STATUS_URL || 'https://yazam.tatar/api/status' }}
+      METRICS_URL: ${{ vars.PROD_METRICS_URL || 'https://yazam.tatar/api/metrics' }}
+    steps:
+      - name: Check health endpoint
+        run: |
+          curl -fsS --max-time 15 "$HEALTH_URL" | python3 -c "import json,sys; data=json.load(sys.stdin); assert data.get('status') == 'ok'"
+
+      - name: Check status endpoint
+        run: |
+          curl -fsS --max-time 15 "$STATUS_URL" | python3 -c "import json,sys; data=json.load(sys.stdin); assert data.get('status') == 'ok'; assert isinstance(data.get('active_streams'), int)"
+
+      - name: Check metrics endpoint
+        run: |
+          curl -fsS --max-time 15 "$METRICS_URL" | grep -q "gec_requests_total"
+
+  demo:
+    if: ${{ vars.DEMO_STATUS_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HEALTH_URL: ${{ vars.DEMO_HEALTH_URL }}
+      STATUS_URL: ${{ vars.DEMO_STATUS_URL }}
+      METRICS_URL: ${{ vars.DEMO_METRICS_URL }}
+    steps:
+      - name: Check health endpoint
+        run: |
+          curl -fsS --max-time 15 "$HEALTH_URL" | python3 -c "import json,sys; data=json.load(sys.stdin); assert data.get('status') == 'ok'"
+
+      - name: Check status endpoint
+        run: |
+          curl -fsS --max-time 15 "$STATUS_URL" | python3 -c "import json,sys; data=json.load(sys.stdin); assert data.get('status') == 'ok'; assert isinstance(data.get('active_streams'), int)"
+
+      - name: Check metrics endpoint
+        run: |
+          curl -fsS --max-time 15 "$METRICS_URL" | grep -q "gec_requests_total"

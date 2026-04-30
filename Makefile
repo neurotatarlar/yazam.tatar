@@ -48,7 +48,7 @@ format: format-backend format-client
 
 security-backend:
 	$(PYTHON) -m bandit -c pyproject.toml -r backend -q
-	# TODO: remove ignore once Gemini SDK supports protobuf>=6 (CVE-2026-0994)
+	# TODO: remove ignore once google-generativeai supports protobuf>=6.
 	$(PYTHON) -m pip_audit -r requirements.txt -r requirements-dev.txt --ignore-vuln CVE-2026-0994
 
 security: security-backend

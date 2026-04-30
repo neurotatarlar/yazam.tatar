@@ -24,6 +24,10 @@ on:
           - demo
           - production
 
+permissions:
+  contents: read
+  actions: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment || 'auto' }}
   cancel-in-progress: true
@@ -77,6 +81,48 @@ jobs:
           echo "api_base_url=$API_BASE_URL" >> "$GITHUB_OUTPUT"
           echo "nginx_snippet_src=$NGINX_SNIPPET_SRC" >> "$GITHUB_OUTPUT"
           echo "app_version_prefix=$APP_VERSION_PREFIX" >> "$GITHUB_OUTPUT"
+
+  qa_gate:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Wait for full qa gate on this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/qa-full.yml/runs?head_sha=${GITHUB_SHA}&per_page=20"
+
+          for _ in $(seq 1 60); do
+            response="$(curl -fsSL \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "$api")"
+
+            status="$(python -c 'import json,sys; runs=json.loads(sys.stdin.read()).get("workflow_runs", []); print(runs[0]["status"] if runs else "")' <<<"$response")"
+            conclusion="$(python -c 'import json,sys; runs=json.loads(sys.stdin.read()).get("workflow_runs", []); print(runs[0]["conclusion"] if runs and runs[0]["conclusion"] else "")' <<<"$response")"
+
+            if [ -z "$status" ]; then
+              sleep 10
+              continue
+            fi
+
+            if [ "$status" != "completed" ]; then
+              sleep 10
+              continue
+            fi
+
+            if [ "$conclusion" = "success" ]; then
+              echo "qa-full.yml passed for ${GITHUB_SHA}"
+              exit 0
+            fi
+
+            echo "qa-full.yml finished with conclusion=${conclusion}" >&2
+            exit 1
+          done
+
+          echo "Timed out waiting for qa-full.yml on ${GITHUB_SHA}" >&2
+          exit 1
 
   changes:
     runs-on: ubuntu-latest
@@ -204,9 +250,10 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - target
+      - qa_gate
       - backend
       - client
-    if: needs.backend.result == 'success' || needs.client.result == 'success' || github.event_name == 'workflow_dispatch'
+    if: (needs.backend.result == 'success' || needs.client.result == 'success' || github.event_name == 'workflow_dispatch') && (github.event_name == 'workflow_dispatch' || needs.qa_gate.result == 'success')
     timeout-minutes: 20
     environment: ${{ needs.target.outputs.environment_name }}
     env:
@@ -321,6 +368,8 @@ jobs:
                 sleep 2
               done
               curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null
+              curl -fsS "http://127.0.0.1:${PORT}/status" | python3 -c "import json,sys; data=json.load(sys.stdin); assert data.get('status') == 'ok'; assert 'requests_total' in data"
+              curl -fsS "http://127.0.0.1:${PORT}/metrics" | grep -q "gec_requests_total"
             fi
 
             if [ "$HAS_WEB" = true ]; then

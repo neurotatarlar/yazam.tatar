@@ -14,6 +14,7 @@ Streaming grammar/spell correction prototype for Tatar (Cyrillic). Single-page U
 
 ## Deployment (dev VPS)
 See `deploy/README.md` for the GitHub Actions setup (manual init + auto deploy on `master`).
+Deploy pipeline now waits for the `full qa gate` workflow to succeed for the same commit before rollout.
 
 ## Project structure
 - `backend/` — FastAPI service (SSE streaming + rate limiting + metrics)
@@ -81,6 +82,9 @@ See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MO
 ## Deployment
 - Systemd unit files live in `deploy/systemd/`.
 - Example Nginx configs (including SSE-friendly settings) live in `deploy/nginx/`.
+- Scheduled operational checks:
+  - `.github/workflows/dependency-audit.yml` (weekly dependency vulnerability + integrity scans)
+  - `.github/workflows/runtime-observability.yml` (hourly `/health`, `/status`, `/metrics` probes)
 
 ## SSE troubleshooting
 - Ensure reverse proxy disables buffering and respects long-lived connections.
