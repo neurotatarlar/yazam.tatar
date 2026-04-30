@@ -37,18 +37,18 @@
 - [x] Real ASGI server streaming test (verify active_streams > 0 during open stream)
 - [x] Concurrent stream load smoke test (open N streams, ensure 429 on N+1)
 
-## Client (Flutter) (add)
+## Web Client (add)
 ### Unit tests
 - [ ] Backend client SSE parsing (delta assembly + done)
 - [ ] Error handling mapping (server error, rate limit)
-- [ ] App state reducers (input -> stream -> output)
-- [ ] Settings store persistence (shared_preferences)
-- [ ] History store persistence (hive)
+- [ ] App state transitions (input -> stream -> output)
+- [ ] Settings persistence (browser storage)
+- [ ] History persistence (browser storage)
 - [x] Config loading (base URL, app name, identifiers)
 - [x] Layout state machine (horizontal/vertical, expand/collapse)
 - [ ] Stream lifecycle (start/stop/cancel) state transitions
 - [x] Config fallback when config file missing/empty
-### Widget tests
+### UI tests
 - [x] Offline view rendering when backend unreachable
 - [x] Widget flow: input -> stream -> output populated
 - [x] Layout toggle updates panels (horizontal/vertical)
@@ -74,7 +74,7 @@
 - [ ] Concurrency soak (open N streams, monitor memory/FD growth)
 - [ ] 10 RPS with 60s latency (backend CPU/memory baseline)
 - [ ] Web client under network throttling (slow 3G/4G)
-- [ ] Low-end device profile (CPU/memory) for Flutter
+- [ ] Low-end device profile (CPU/memory) for web runtime
 
 ## Resilience (add)
 - [ ] Network drop mid-stream (client recovers gracefully)
@@ -110,5 +110,4 @@
 - [ ] Non-ASCII input handling in UI (copy/select)
 
 ## Data migration (add)
-- [ ] Hive schema migration (history)
-- [ ] SharedPreferences migration (settings)
+- [ ] Browser storage migration (history/settings)

@@ -5,8 +5,7 @@ This repo uses lightweight VPS deploys (no Docker) through GitHub Actions with t
 - `production`: deployed on push to `release`, served from `/` with API at `/api`
 
 Web UI artifacts are assembled from:
-- `webapp/` (HTML/CSS/JS shell)
-- `client/assets/` (i18n, logos, fonts, config)
+- `webapp/` (HTML/CSS/JS shell + assets + metadata)
 
 ## Paths and services
 - Backend venv: `/opt/gec_tt/venv`

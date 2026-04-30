@@ -5,8 +5,7 @@ This file defines frontend and backend rules for this repository.
 ## Scope
 
 - Frontend web code lives in `webapp/` (HTML/CSS/JS).
-- Shared frontend assets and i18n live in `client/assets/`.
-- Legacy Flutter code in `client/lib/` is reference-only and not part of deployment.
+- Frontend assets and i18n also live in `webapp/` under `webapp/assets/`.
 - Product type: grammar correction tool (GEC), not open-ended chat.
 - Backend code lives in `backend/`.
 
@@ -67,10 +66,6 @@ Applicable principles used here:
 - Preserve history for reuse.
 - Do not imply the app supports free-form assistant conversation.
 
-## Flutter Implementation Rules
-
-- Legacy-only: apply these rules only when touching reference Flutter code under `client/lib/`.
-
 ## Backend Rules
 
 1. API contract stability.
@@ -98,11 +93,11 @@ Applicable principles used here:
 
 ## i18n and Copy
 
-- No hardcoded user-facing strings in widgets.
+- No hardcoded user-facing strings in UI scripts/templates.
 - Add every new key to:
-  - `client/assets/i18n/en.json`
-  - `client/assets/i18n/ru.json`
-  - `client/assets/i18n/tt.json`
+  - `webapp/assets/i18n/en.json`
+  - `webapp/assets/i18n/ru.json`
+  - `webapp/assets/i18n/tt.json`
 - Use consistent correction terminology (`Original`, `Correction`, `Correcting`).
 
 ## Accessibility and Quality
@@ -113,7 +108,6 @@ Applicable principles used here:
 
 ## Validation Before Finish
 
-- `cd client && /home/tans1q/flutter/bin/flutter analyze --no-version-check`
 - `make test-client`
 - Verify no regression in: streaming, retry, copy, report, history.
 - `.venv/bin/python -m ruff check backend`

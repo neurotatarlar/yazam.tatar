@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-I18N_DIR = ROOT / "client" / "assets" / "i18n"
+I18N_DIR = ROOT / "webapp" / "assets" / "i18n"
 WEBAPP_DIR = ROOT / "webapp"
 
 
@@ -22,7 +22,7 @@ def ensure_files_exist() -> None:
         WEBAPP_DIR / "styles.css",
         WEBAPP_DIR / "app.js",
         ROOT / "deploy" / "build_web_static.sh",
-        ROOT / "client" / "assets" / "config.json",
+        WEBAPP_DIR / "assets" / "config.json",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:

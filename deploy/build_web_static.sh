@@ -10,14 +10,6 @@ rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
 cp -a webapp/. "$OUT_DIR/"
-mkdir -p "$OUT_DIR/assets"
-cp -a client/assets/. "$OUT_DIR/assets/"
-
-cp -a client/web/icons "$OUT_DIR/"
-cp client/web/favicon.png "$OUT_DIR/"
-cp client/web/manifest.json "$OUT_DIR/"
-cp client/web/robots.txt "$OUT_DIR/"
-cp client/web/sitemap.xml "$OUT_DIR/"
 
 export OUT_DIR WEB_BASE_HREF API_BASE_URL BUILD_SHA
 

@@ -28,12 +28,11 @@ Deploy pipeline now waits for the `full qa gate` workflow to succeed for the sam
   - `webapp/index.html` — app shell and page layout
   - `webapp/styles.css` — styles and boot skeleton
   - `webapp/app.js` — i18n, history, SSE streaming, page state
-- `client/assets/` — shared frontend assets
-  - `client/assets/config.json` — backend URL + app name
-  - `client/assets/i18n/*.json` — UI translations
-  - `client/assets/brand`, `client/assets/partners`, `client/assets/support`, `client/assets/fonts`
-- `client/` — legacy Flutter project kept for reference; no longer used in deploy
-- `deploy/build_web_static.sh` — assembles deployable web bundle from `webapp/` + `client/assets/`
+  - `webapp/assets/config.json` — backend URL + app name
+  - `webapp/assets/i18n/*.json` — UI translations
+  - `webapp/assets/brand`, `webapp/assets/partners`, `webapp/assets/support`, `webapp/assets/fonts`
+  - `webapp/icons/`, `webapp/manifest.json`, `webapp/robots.txt`, `webapp/sitemap.xml`
+- `deploy/build_web_static.sh` — assembles deployable web bundle from `webapp/`
 - Repo tooling/config
   - `.env.example` — backend defaults (copy to `.env`)
   - `requirements.txt`, `requirements-dev.txt` — backend deps

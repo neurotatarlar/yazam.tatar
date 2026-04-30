@@ -8,7 +8,6 @@ on:
     paths:
       - "webapp/**"
       - "webapp-tests/**"
-      - "client/assets/**"
       - "deploy/build_web_static.sh"
       - "package.json"
       - "package-lock.json"
@@ -16,7 +15,6 @@ on:
     paths:
       - "webapp/**"
       - "webapp-tests/**"
-      - "client/assets/**"
       - "deploy/build_web_static.sh"
       - "package.json"
       - "package-lock.json"

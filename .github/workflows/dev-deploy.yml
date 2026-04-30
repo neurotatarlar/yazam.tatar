@@ -7,8 +7,6 @@ on:
       - release
     paths:
       - "backend/**"
-      - "client/assets/**"
-      - "client/web/**"
       - "webapp/**"
       - "tools/check_web_static.py"
       - "deploy/build_web_static.sh"
@@ -148,14 +146,11 @@ jobs:
               - "requirements*.txt"
               - "pyproject.toml"
             client:
-              - "client/assets/**"
-              - "client/web/**"
               - "webapp/**"
               - "tools/check_web_static.py"
               - "deploy/build_web_static.sh"
             client_deps:
-              - "client/assets/**"
-              - "client/web/**"
+              - "webapp/**"
 
   backend:
     runs-on: ubuntu-latest
