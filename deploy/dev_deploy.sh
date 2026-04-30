@@ -48,6 +48,12 @@ if [ "$HAS_WHEEL" = true ]; then
   update_env MODEL_BACKEND "${MODEL_BACKEND:-}"
   update_env GEMINI_MODEL "${GEMINI_MODEL:-}"
   update_env GEMINI_API_KEYS "${GEMINI_API_KEYS:-}"
+  update_env POLZA_BASE_URL "${POLZA_BASE_URL:-}"
+  update_env POLZA_API_KEY "${POLZA_API_KEY:-}"
+  update_env POLZA_MODEL "${POLZA_MODEL:-}"
+  update_env POLZA_TIMEOUT_SECONDS "${POLZA_TIMEOUT_SECONDS:-}"
+  update_env POLZA_PROVIDER_ALLOW_FALLBACKS "${POLZA_PROVIDER_ALLOW_FALLBACKS:-}"
+  update_env POLZA_PROVIDER_ONLY "${POLZA_PROVIDER_ONLY:-}"
 fi
 
 if [ "$HAS_WHEEL" = true ]; then

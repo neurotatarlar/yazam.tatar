@@ -103,6 +103,7 @@ class GeminiAdapter(ModelAdapter):
     """Model adapter that wraps the Google Gemini API."""
 
     name = "gemini"
+    prefetch_first_chunk = True
 
     def __init__(self, keys: list[str], model: str):
         self._pool = GeminiKeyPool(keys)

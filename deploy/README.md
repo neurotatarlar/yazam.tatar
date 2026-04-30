@@ -57,12 +57,18 @@ Per environment, define secrets:
 - `DEPLOY_SSH_KEY`
 - `DEPLOY_SSH_PORT`
 - `GEMINI_API_KEYS`
+- `POLZA_API_KEY`
 - `WG_CONFIG` (optional; if set, bootstrap writes `/etc/wireguard/wg0.conf` and enables VPN services)
 - `CERTBOT_EMAIL` (required for `production` bootstrap TLS setup)
 
 Per environment, optional vars:
 - `NGINX_SITE` (override target nginx server file)
-- `MODEL_BACKEND` (default `gemini`)
+- `MODEL_BACKEND` (default `polza`)
+- `POLZA_BASE_URL` (default `https://polza.ai/api/v1`)
+- `POLZA_MODEL` (default `google/gemini-3.1-flash-lite-preview`)
+- `POLZA_TIMEOUT_SECONDS` (default `25`)
+- `POLZA_PROVIDER_ALLOW_FALLBACKS` (`true`/`false`, default `false`)
+- `POLZA_PROVIDER_ONLY` (default `Google`)
 - `GEMINI_MODEL` (default `gemini-3-flash-preview`)
 - `CERTBOT_PRIMARY_DOMAIN` (default `yazam.tatar`)
 - `CERTBOT_EXTRA_DOMAINS` (comma-separated, example `www.yazam.tatar`)

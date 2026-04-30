@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 
 from .cache import SimpleCache
-from .gemini import GeminiAdapter, GeminiKeyExhausted
+from .gemini import GeminiKeyExhausted
 from .metrics import (
     CACHE_HITS,
     METRICS_CONTENT_TYPE,
@@ -31,6 +31,7 @@ from .metrics import (
     render_metrics,
 )
 from .models import ModelAdapter, build_adapter, cache_key, request_id
+from .polza import PolzaRateLimited
 from .rate_limit import SlidingLimiter
 from .settings import Settings, get_settings
 
@@ -250,7 +251,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
     stream_iter = state.adapter.correct_stream(text, lang, rid)
     first_delta: str | None = None
     stream_finished = False
-    if isinstance(state.adapter, GeminiAdapter):
+    if getattr(state.adapter, "prefetch_first_chunk", False):
         try:
             first_delta = await stream_iter.__anext__()
         except StopAsyncIteration:
@@ -264,6 +265,12 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
                 status_code=429,
                 detail={"error": "rate_limited", "message": str(err)},
             ) from err
+        except PolzaRateLimited:
+            record_rate_limited(state, "stream")
+            record_stream_outcome("rate_limited")
+            state.streams[ip] = max(0, state.streams.get(ip, 1) - 1)
+            STREAMS_ACTIVE.dec()
+            raise HTTPException(status_code=429, detail={"error": "rate_limited"}) from None
 
     async def event_stream() -> AsyncGenerator[str, None]:
         """Yield SSE frames while keeping metrics and cache in sync."""
@@ -301,6 +308,14 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
             yield sse_event(
                 "error",
                 {"request_id": rid, "type": "rate_limited", "message": str(err)},
+            )
+            state.total_rate_limited += 1
+            record_stream_outcome("rate_limited")
+            state.total_streams_error += 1
+        except PolzaRateLimited:
+            yield sse_event(
+                "error",
+                {"request_id": rid, "type": "rate_limited", "message": "rate_limited"},
             )
             state.total_rate_limited += 1
             record_stream_outcome("rate_limited")

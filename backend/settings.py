@@ -23,6 +23,19 @@ def _get_list(name: str) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _get_bool(name: str, default: bool) -> bool:
+    """Fetch a boolean environment variable with a default."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
 @dataclass
 class Settings:
     """Typed configuration loaded from environment variables."""
@@ -44,13 +57,29 @@ class Settings:
     trusted_proxy_ips: list[str] = field(
         default_factory=lambda: _get_list("TRUSTED_PROXY_IPS") or ["127.0.0.1", "::1"]
     )
-    model_backend: str = field(default_factory=lambda: _get("MODEL_BACKEND", "gemini"))
+    model_backend: str = field(default_factory=lambda: _get("MODEL_BACKEND", "polza"))
     prompt_version: str = field(default_factory=lambda: _get("PROMPT_VERSION", "v1"))
     cache_ttl_ms: int = field(default_factory=lambda: _get_int("CACHE_TTL_MS", 60000))
     gemini_model: str = field(
         default_factory=lambda: _get("GEMINI_MODEL", "gemini-3-flash-preview")
     )
     gemini_api_keys: list[str] = field(default_factory=lambda: _get_list("GEMINI_API_KEYS"))
+    polza_base_url: str = field(
+        default_factory=lambda: _get("POLZA_BASE_URL", "https://polza.ai/api/v1")
+    )
+    polza_api_key: str = field(default_factory=lambda: _get("POLZA_API_KEY", ""))
+    polza_model: str = field(
+        default_factory=lambda: _get("POLZA_MODEL", "google/gemini-3.1-flash-lite-preview")
+    )
+    polza_timeout_seconds: int = field(
+        default_factory=lambda: _get_int("POLZA_TIMEOUT_SECONDS", 25)
+    )
+    polza_provider_allow_fallbacks: bool = field(
+        default_factory=lambda: _get_bool("POLZA_PROVIDER_ALLOW_FALLBACKS", False)
+    )
+    polza_provider_only: list[str] = field(
+        default_factory=lambda: _get_list("POLZA_PROVIDER_ONLY") or ["Google"]
+    )
 
 
 def get_settings() -> Settings:

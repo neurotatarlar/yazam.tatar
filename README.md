@@ -73,7 +73,8 @@ Validation: rejects empty/whitespace-only text; enforces `MAX_CHARS`. Rate limit
 `X-Forwarded-For` is only trusted when the direct peer is in `TRUSTED_PROXY_IPS`.
 
 ## Configuration
-See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MODEL_BACKEND` supports `gemini`, `mock`, `prompt`, `local` adapters; swap without UI changes.
+See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MODEL_BACKEND` supports `polza`, `gemini`, `mock`, `prompt`, `local` adapters; swap without UI changes.
+For Polza primary mode, set `MODEL_BACKEND=polza`, `POLZA_API_KEY`, and `POLZA_MODEL` (default `google/gemini-3.1-flash-lite-preview`). Backend keeps direct Gemini as rollback when `GEMINI_API_KEYS` is set.
 
 ## Dev tools
 - Backend lint/type/security: `requirements-dev.txt` (install via `make install-dev`).
@@ -106,4 +107,5 @@ See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MO
 
 ## Notes
 - Logging avoids full text; request metadata only.
+- Polza usage fields (tokens/cost) are logged for internal observability only.
 - Local cache prevents repeat identical correction calls for a short TTL.

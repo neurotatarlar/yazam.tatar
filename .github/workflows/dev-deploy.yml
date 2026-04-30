@@ -260,6 +260,12 @@ jobs:
       MODEL_BACKEND: ${{ vars.MODEL_BACKEND }}
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
       GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+      POLZA_BASE_URL: ${{ vars.POLZA_BASE_URL }}
+      POLZA_MODEL: ${{ vars.POLZA_MODEL }}
+      POLZA_TIMEOUT_SECONDS: ${{ vars.POLZA_TIMEOUT_SECONDS }}
+      POLZA_PROVIDER_ALLOW_FALLBACKS: ${{ vars.POLZA_PROVIDER_ALLOW_FALLBACKS }}
+      POLZA_PROVIDER_ONLY: ${{ vars.POLZA_PROVIDER_ONLY }}
+      POLZA_API_KEY: ${{ secrets.POLZA_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -309,12 +315,18 @@ jobs:
           MODEL_BACKEND: ${{ env.MODEL_BACKEND }}
           GEMINI_MODEL: ${{ env.GEMINI_MODEL }}
           GEMINI_API_KEYS: ${{ env.GEMINI_API_KEYS }}
+          POLZA_BASE_URL: ${{ env.POLZA_BASE_URL }}
+          POLZA_MODEL: ${{ env.POLZA_MODEL }}
+          POLZA_TIMEOUT_SECONDS: ${{ env.POLZA_TIMEOUT_SECONDS }}
+          POLZA_PROVIDER_ALLOW_FALLBACKS: ${{ env.POLZA_PROVIDER_ALLOW_FALLBACKS }}
+          POLZA_PROVIDER_ONLY: ${{ env.POLZA_PROVIDER_ONLY }}
+          POLZA_API_KEY: ${{ env.POLZA_API_KEY }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_SSH_PORT }}
-          envs: MODEL_BACKEND,GEMINI_MODEL,GEMINI_API_KEYS
+          envs: MODEL_BACKEND,GEMINI_MODEL,GEMINI_API_KEYS,POLZA_BASE_URL,POLZA_MODEL,POLZA_TIMEOUT_SECONDS,POLZA_PROVIDER_ALLOW_FALLBACKS,POLZA_PROVIDER_ONLY,POLZA_API_KEY
           script: |
             set -e
             rm -rf /tmp/gec-tt-deploy
@@ -336,10 +348,25 @@ jobs:
             APP_VERSION="${{ needs.target.outputs.app_version_prefix }}-${{ github.sha }}"
             APP_GIT_SHA="${{ github.sha }}"
             if [ -z "${MODEL_BACKEND:-}" ]; then
-              MODEL_BACKEND=gemini
+              MODEL_BACKEND=polza
             fi
             if [ -z "${GEMINI_MODEL:-}" ]; then
               GEMINI_MODEL=gemini-3-flash-preview
+            fi
+            if [ -z "${POLZA_BASE_URL:-}" ]; then
+              POLZA_BASE_URL=https://polza.ai/api/v1
+            fi
+            if [ -z "${POLZA_MODEL:-}" ]; then
+              POLZA_MODEL=google/gemini-3.1-flash-lite-preview
+            fi
+            if [ -z "${POLZA_TIMEOUT_SECONDS:-}" ]; then
+              POLZA_TIMEOUT_SECONDS=25
+            fi
+            if [ -z "${POLZA_PROVIDER_ALLOW_FALLBACKS:-}" ]; then
+              POLZA_PROVIDER_ALLOW_FALLBACKS=false
+            fi
+            if [ -z "${POLZA_PROVIDER_ONLY:-}" ]; then
+              POLZA_PROVIDER_ONLY=Google
             fi
 
             APP_USER=gec-tt-bot \
@@ -354,6 +381,12 @@ jobs:
               MODEL_BACKEND="$MODEL_BACKEND" \
               GEMINI_MODEL="$GEMINI_MODEL" \
               GEMINI_API_KEYS="$GEMINI_API_KEYS" \
+              POLZA_BASE_URL="$POLZA_BASE_URL" \
+              POLZA_API_KEY="$POLZA_API_KEY" \
+              POLZA_MODEL="$POLZA_MODEL" \
+              POLZA_TIMEOUT_SECONDS="$POLZA_TIMEOUT_SECONDS" \
+              POLZA_PROVIDER_ALLOW_FALLBACKS="$POLZA_PROVIDER_ALLOW_FALLBACKS" \
+              POLZA_PROVIDER_ONLY="$POLZA_PROVIDER_ONLY" \
               /tmp/gec-tt-deploy/deploy/dev_deploy.sh
 
             if [ "$HAS_WHEEL" = true ]; then
