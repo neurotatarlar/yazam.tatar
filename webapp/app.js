@@ -47,7 +47,6 @@
     correctedText: '',
     errorMessage: '',
     isStreaming: false,
-    statusText: '',
     requestId: '',
     activeOriginal: '',
     activeTimestamp: null,
@@ -220,7 +219,6 @@
   function resetOutputPane() {
     state.correctedText = '';
     state.errorMessage = '';
-    state.statusText = '';
     state.requestId = '';
   }
 
@@ -530,7 +528,6 @@
     } catch (error) {
       if (controller.signal.aborted) {
         state.isStreaming = false;
-        state.statusText = t('actions.stopped');
         render();
         return;
       }

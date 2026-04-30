@@ -98,9 +98,3 @@ async def test_cli_smoke():
         assert "event: done" in output
     finally:
         stop_server(process)
-
-
-@pytest.mark.e2e
-@pytest.mark.skipif(os.getenv("RUN_E2E_FULL") != "1", reason="full stack e2e disabled")
-def test_full_stack_e2e_placeholder():
-    pytest.skip("Requires running the Flutter UI against the backend.")
