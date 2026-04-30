@@ -1,0 +1,10 @@
+{
+  "name": "gec-tt",
+  "private": true,
+  "scripts": {
+    "test:web-smoke": "playwright test -c webapp-tests/playwright.config.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}

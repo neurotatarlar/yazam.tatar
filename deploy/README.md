@@ -21,6 +21,8 @@ Web UI artifacts are assembled from:
   - `master` -> deploy `demo`
   - `release` -> deploy `production`
 - `release package` (`.github/workflows/release.yml`): manual tagged package release
+- `full qa gate` (`.github/workflows/qa-full.yml`): automated reliability gate (backend lint/security/tests + integration/e2e smoke + web smoke tests)
+- `web smoke tests` (`.github/workflows/web-smoke.yml`): lightweight UI smoke checks for web changes
 
 ## VPS preparation (first run)
 1) Install packages:

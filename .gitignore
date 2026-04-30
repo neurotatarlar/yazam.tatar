@@ -17,6 +17,9 @@ dist/
 .vscode/
 .idea/
 *.iml
+node_modules/
+playwright-report/
+test-results/
 
 commands.txt
 todo

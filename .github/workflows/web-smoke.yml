@@ -1,0 +1,50 @@
+name: web smoke tests
+
+on:
+  push:
+    branches:
+      - master
+      - release
+    paths:
+      - "webapp/**"
+      - "webapp-tests/**"
+      - "client/assets/**"
+      - "deploy/build_web_static.sh"
+      - "package.json"
+      - "package-lock.json"
+  pull_request:
+    paths:
+      - "webapp/**"
+      - "webapp-tests/**"
+      - "client/assets/**"
+      - "deploy/build_web_static.sh"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run web smoke tests
+        run: npm run test:web-smoke
