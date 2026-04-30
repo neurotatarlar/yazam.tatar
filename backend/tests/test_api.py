@@ -15,6 +15,8 @@ from backend.settings import Settings
 def setup_state(**overrides):
     if "model_backend" not in overrides:
         overrides["model_backend"] = "mock"
+    if "trusted_proxy_ips" not in overrides:
+        overrides["trusted_proxy_ips"] = ["127.0.0.1", "::1", "testclient"]
     settings = Settings(**overrides)
     app.state.app_state = AppState(settings)
     return app

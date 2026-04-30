@@ -69,6 +69,7 @@ Payload shape:
 ```
 
 Validation: rejects empty/whitespace-only text; enforces `MAX_CHARS`. Rate limits per minute/day plus max concurrent streams per IP.
+`X-Forwarded-For` is only trusted when the direct peer is in `TRUSTED_PROXY_IPS`.
 
 ## Configuration
 See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MODEL_BACKEND` supports `gemini`, `mock`, `prompt`, `local` adapters; swap without UI changes.

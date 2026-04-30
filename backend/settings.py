@@ -41,6 +41,9 @@ class Settings:
         default_factory=lambda: _get_int("MAX_CONCURRENT_STREAMS", 3)
     )
     heartbeat_ms: int = field(default_factory=lambda: _get_int("HEARTBEAT_MS", 20000))
+    trusted_proxy_ips: list[str] = field(
+        default_factory=lambda: _get_list("TRUSTED_PROXY_IPS") or ["127.0.0.1", "::1"]
+    )
     model_backend: str = field(default_factory=lambda: _get("MODEL_BACKEND", "gemini"))
     prompt_version: str = field(default_factory=lambda: _get("PROMPT_VERSION", "v1"))
     cache_ttl_ms: int = field(default_factory=lambda: _get_int("CACHE_TTL_MS", 60000))

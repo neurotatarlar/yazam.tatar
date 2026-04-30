@@ -54,11 +54,31 @@ def test_request_id_hex():
     assert set(rid) <= set(string.hexdigits.lower())
 
 
-def test_client_ip_parses_forwarded_for():
+def test_client_ip_ignores_forwarded_for_without_trusted_proxy():
     scope = {
         "type": "http",
         "headers": [(b"x-forwarded-for", b"1.2.3.4, 5.6.7.8")],
         "client": ("9.9.9.9", 1234),
     }
     request = Request(scope)
-    assert client_ip(request) == "1.2.3.4"
+    assert client_ip(request) == "9.9.9.9"
+
+
+def test_client_ip_parses_forwarded_for_for_trusted_proxy():
+    scope = {
+        "type": "http",
+        "headers": [(b"x-forwarded-for", b"1.2.3.4, 5.6.7.8")],
+        "client": ("9.9.9.9", 1234),
+    }
+    request = Request(scope)
+    assert client_ip(request, {"9.9.9.9"}) == "1.2.3.4"
+
+
+def test_client_ip_rejects_invalid_forwarded_for_value():
+    scope = {
+        "type": "http",
+        "headers": [(b"x-forwarded-for", b"not-an-ip, 5.6.7.8")],
+        "client": ("9.9.9.9", 1234),
+    }
+    request = Request(scope)
+    assert client_ip(request, {"9.9.9.9"}) == "9.9.9.9"

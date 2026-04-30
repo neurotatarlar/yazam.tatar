@@ -6,6 +6,7 @@ with validation, rate limiting, caching, and error mapping.
 """
 
 import asyncio
+import ipaddress
 import json
 import logging
 import time
@@ -49,6 +50,7 @@ class AppState:
             logger.info("Gemini model: %s", self.adapter._model)
         self.cache = SimpleCache(settings.cache_ttl_ms)
         self.rates = SlidingLimiter(settings.rate_limit_per_minute, settings.rate_limit_per_day)
+        self.trusted_proxy_ips = set(settings.trusted_proxy_ips)
         self.streams: dict[str, int] = {}
         self.started_at = time.time()
         self.total_requests = 0
@@ -162,7 +164,7 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
     except HTTPException:
         record_invalid_request(state, "correct", started)
         raise
-    ip = client_ip(request)
+    ip = client_ip(request, state.trusted_proxy_ips)
     if not state.rates.allow(ip):
         record_rate_limited(state, "correct", started)
         raise HTTPException(status_code=429, detail={"error": "rate_limited"})
@@ -215,7 +217,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
     except HTTPException:
         record_invalid_request(state, "stream")
         raise
-    ip = client_ip(request)
+    ip = client_ip(request, state.trusted_proxy_ips)
     if not state.rates.allow(ip):
         record_rate_limited(state, "stream")
         raise HTTPException(status_code=429, detail={"error": "rate_limited"})
@@ -405,12 +407,24 @@ async def parse_json_body(request: Request) -> dict[str, Any]:
     return payload
 
 
-def client_ip(request: Request) -> str:
-    """Resolve the client IP using proxy headers when present."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+def client_ip(request: Request, trusted_proxy_ips: set[str] | None = None) -> str:
+    """Resolve client IP and trust forwarded headers only from known proxies."""
+    direct_ip = request.client.host if request.client else "unknown"
+    if not trusted_proxy_ips or direct_ip not in trusted_proxy_ips:
+        return direct_ip
+
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if not forwarded:
+        return direct_ip
+
+    candidate = forwarded.split(",", 1)[0].strip()
+    if not candidate:
+        return direct_ip
+    try:
+        ipaddress.ip_address(candidate)
+    except ValueError:
+        return direct_ip
+    return candidate
 
 
 # CORS
