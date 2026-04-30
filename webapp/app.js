@@ -47,7 +47,6 @@
     correctedText: '',
     errorMessage: '',
     isStreaming: false,
-    requestId: '',
     activeOriginal: '',
     activeTimestamp: null,
     focusMode: false,
@@ -118,8 +117,6 @@
       original: String(item.original || ''),
       corrected: String(item.corrected || ''),
       timestamp: timestamp.toISOString(),
-      latencyMs: Number(item.latencyMs || 0),
-      requestId: String(item.requestId || ''),
     };
   }
 
@@ -219,7 +216,6 @@
   function resetOutputPane() {
     state.correctedText = '';
     state.errorMessage = '';
-    state.requestId = '';
   }
 
   function renderText() {
@@ -370,18 +366,18 @@
     renderNavigation();
     renderOutput();
     renderButtons();
-    renderHistory();
+    if (state.section === 'history') {
+      renderHistory();
+    }
   }
 
-  function addHistoryItem(latencyMs) {
+  function addHistoryItem() {
     const timestamp = state.activeTimestamp || new Date().toISOString();
     const item = {
       id: String(Date.now()),
       original: state.activeOriginal,
       corrected: state.correctedText,
       timestamp,
-      latencyMs,
-      requestId: state.requestId,
     };
     state.history.unshift(item);
     persistHistory();
@@ -409,10 +405,6 @@
   }
 
   function handleEvent(eventName, payload, onDone) {
-    if (eventName === 'meta') {
-      state.requestId = String(payload.request_id || '');
-      return;
-    }
     if (eventName === 'delta') {
       state.correctedText += String(payload.text || '');
       renderOutput();
@@ -420,8 +412,7 @@
       return;
     }
     if (eventName === 'done') {
-      const latency = Number(payload.latency_ms || 0);
-      onDone(Number.isFinite(latency) ? latency : 0);
+      onDone();
       return;
     }
     if (eventName === 'error') {
@@ -479,13 +470,13 @@
       let currentEvent = 'message';
       let currentData = '';
 
-      const finish = (latency) => {
+      const finish = () => {
         if (!state.isStreaming) {
           return;
         }
         state.isStreaming = false;
         doneReceived = true;
-        addHistoryItem(latency);
+        addHistoryItem();
         render();
       };
 
@@ -521,7 +512,7 @@
       }
 
       if (!doneReceived && state.isStreaming) {
-        addHistoryItem(0);
+        addHistoryItem();
       }
       state.isStreaming = false;
       render();

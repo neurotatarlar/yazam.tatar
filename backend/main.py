@@ -118,28 +118,53 @@ async def metrics():
     return Response(render_metrics(), media_type=METRICS_CONTENT_TYPE)
 
 
+def record_request_outcome(endpoint: str, outcome: str, started_at: float | None = None) -> None:
+    """Update request counters and optional latency metric."""
+    REQUESTS_TOTAL.labels(endpoint=endpoint, outcome=outcome).inc()
+    if started_at is not None:
+        REQUEST_LATENCY.labels(endpoint=endpoint).observe(time.time() - started_at)
+
+
+def record_invalid_request(state: AppState, endpoint: str, started_at: float | None = None) -> None:
+    """Track invalid input outcomes for one endpoint."""
+    state.total_invalid += 1
+    record_request_outcome(endpoint, "invalid_input", started_at)
+
+
+def record_rate_limited(state: AppState, endpoint: str, started_at: float | None = None) -> None:
+    """Track rate-limit outcomes for one endpoint."""
+    state.total_rate_limited += 1
+    record_request_outcome(endpoint, "rate_limited", started_at)
+
+
+async def parse_and_validate_correction_request(
+    request: Request, max_body_bytes: int, max_chars: int
+) -> tuple[str, str]:
+    """Parse and validate correction request payload."""
+    ensure_json_request(request)
+    await enforce_body_size(request, max_body_bytes)
+    body = await parse_json_body(request)
+    text = str(body.get("text", ""))
+    lang = resolve_correction_lang(body)
+    validate_text(text, max_chars)
+    return text, lang
+
+
 @app.post("/v1/correct")
 async def correct(request: Request, state: AppState = Depends(get_state)):
     """Handle one-shot correction requests."""
     state.total_requests += 1
     started = time.time()
     try:
-        ensure_json_request(request)
-        await enforce_body_size(request, state.settings.max_body_bytes)
-        body = await parse_json_body(request)
-        text = str(body.get("text", ""))
-        lang = resolve_correction_lang(body)
-        validate_text(text, state.settings.max_chars)
+        text, lang = await parse_and_validate_correction_request(
+            request, state.settings.max_body_bytes, state.settings.max_chars
+        )
     except HTTPException:
-        state.total_invalid += 1
-        REQUESTS_TOTAL.labels(endpoint="correct", outcome="invalid_input").inc()
-        REQUEST_LATENCY.labels(endpoint="correct").observe(time.time() - started)
+        record_invalid_request(state, "correct", started)
         raise
     ip = client_ip(request)
     if not state.rates.allow(ip):
-        state.total_rate_limited += 1
-        REQUESTS_TOTAL.labels(endpoint="correct", outcome="rate_limited").inc()
-        REQUEST_LATENCY.labels(endpoint="correct").observe(time.time() - started)
+        record_rate_limited(state, "correct", started)
         raise HTTPException(status_code=429, detail={"error": "rate_limited"})
 
     rid = request_id()
@@ -147,8 +172,7 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
     if cached:
         state.total_cache_hits += 1
         CACHE_HITS.inc()
-        REQUESTS_TOTAL.labels(endpoint="correct", outcome="cache").inc()
-        REQUEST_LATENCY.labels(endpoint="correct").observe(time.time() - started)
+        record_request_outcome("correct", "cache", started)
         return {
             "request_id": rid,
             "corrected_text": cached.value,
@@ -158,25 +182,21 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
     try:
         corrected = await state.adapter.correct(text, lang, rid)
     except GeminiKeyExhausted as err:
-        state.total_rate_limited += 1
-        REQUESTS_TOTAL.labels(endpoint="correct", outcome="rate_limited").inc()
-        REQUEST_LATENCY.labels(endpoint="correct").observe(time.time() - started)
+        record_rate_limited(state, "correct", started)
         raise HTTPException(
             status_code=429,
             detail={"error": "rate_limited", "message": str(err)},
         ) from err
     except Exception as err:  # noqa: BLE001
         state.total_errors += 1
-        REQUESTS_TOTAL.labels(endpoint="correct", outcome="error").inc()
-        REQUEST_LATENCY.labels(endpoint="correct").observe(time.time() - started)
+        record_request_outcome("correct", "error", started)
         raise HTTPException(
             status_code=500, detail={"error": "server_error", "request_id": rid}
         ) from err
 
     state.cache.set(cache_key(text), corrected, state.adapter.name)
     latency = int((time.time() - started) * 1000)
-    REQUESTS_TOTAL.labels(endpoint="correct", outcome="ok").inc()
-    REQUEST_LATENCY.labels(endpoint="correct").observe(time.time() - started)
+    record_request_outcome("correct", "ok", started)
     return {
         "request_id": rid,
         "corrected_text": corrected,
@@ -189,27 +209,21 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
     """Stream correction output as server-sent events."""
     state.total_requests += 1
     try:
-        ensure_json_request(request)
-        await enforce_body_size(request, state.settings.max_body_bytes)
-        body = await parse_json_body(request)
-        text = str(body.get("text", ""))
-        lang = resolve_correction_lang(body)
-        validate_text(text, state.settings.max_chars)
+        text, lang = await parse_and_validate_correction_request(
+            request, state.settings.max_body_bytes, state.settings.max_chars
+        )
     except HTTPException:
-        state.total_invalid += 1
-        REQUESTS_TOTAL.labels(endpoint="stream", outcome="invalid_input").inc()
+        record_invalid_request(state, "stream")
         raise
     ip = client_ip(request)
     if not state.rates.allow(ip):
-        state.total_rate_limited += 1
-        REQUESTS_TOTAL.labels(endpoint="stream", outcome="rate_limited").inc()
+        record_rate_limited(state, "stream")
         raise HTTPException(status_code=429, detail={"error": "rate_limited"})
 
     # concurrency guard
     count = state.streams.get(ip, 0)
     if count >= state.settings.max_concurrent_streams:
-        state.total_rate_limited += 1
-        REQUESTS_TOTAL.labels(endpoint="stream", outcome="rate_limited").inc()
+        record_rate_limited(state, "stream")
         raise HTTPException(
             status_code=429, detail={"error": "rate_limited", "message": "too_many_streams"}
         )
@@ -240,8 +254,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
         except StopAsyncIteration:
             stream_finished = True
         except GeminiKeyExhausted as err:
-            state.total_rate_limited += 1
-            REQUESTS_TOTAL.labels(endpoint="stream", outcome="rate_limited").inc()
+            record_rate_limited(state, "stream")
             record_stream_outcome("rate_limited")
             state.streams[ip] = max(0, state.streams.get(ip, 1) - 1)
             STREAMS_ACTIVE.dec()
