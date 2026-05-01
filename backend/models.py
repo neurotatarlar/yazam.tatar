@@ -4,6 +4,7 @@ import hashlib
 import logging
 import uuid
 from collections.abc import AsyncGenerator
+from contextvars import ContextVar
 
 from .settings import Settings
 
@@ -33,13 +34,18 @@ class FallbackAdapter(ModelAdapter):
         self.primary = primary
         self.fallback = fallback
         self._logger = logging.getLogger("backend")
+        self._backend_used: ContextVar[str | None] = ContextVar(
+            f"fallback_backend_used_{id(self)}", default=None
+        )
 
     async def correct(self, text: str, lang: str, request_id: str) -> str:
         """Try primary adapter then fallback when upstream is retryable."""
         from .polza import PolzaRetryableError
 
         try:
-            return await self.primary.correct(text, lang, request_id)
+            corrected = await self.primary.correct(text, lang, request_id)
+            self._backend_used.set(backend_name(self.primary))
+            return corrected
         except PolzaRetryableError as err:
             self._logger.warning(
                 "upstream_fallback request_id=%s from=%s to=%s reason=%s status_code=%s code=%s",
@@ -50,7 +56,9 @@ class FallbackAdapter(ModelAdapter):
                 err.status_code,
                 err.code,
             )
-            return await self.fallback.correct(text, lang, request_id)
+            corrected = await self.fallback.correct(text, lang, request_id)
+            self._backend_used.set(backend_name(self.fallback))
+            return corrected
 
     async def correct_stream(self, text: str, lang: str, request_id: str):
         """Try primary stream and fallback if it fails before first delta."""
@@ -60,8 +68,12 @@ class FallbackAdapter(ModelAdapter):
         yielded = False
         try:
             async for chunk in primary_stream:
+                if not yielded:
+                    self._backend_used.set(backend_name(self.primary))
                 yielded = True
                 yield chunk
+            if not yielded:
+                self._backend_used.set(backend_name(self.primary))
             return
         except PolzaRetryableError as err:
             if yielded:
@@ -76,7 +88,26 @@ class FallbackAdapter(ModelAdapter):
                 err.code,
             )
             async for chunk in self.fallback.correct_stream(text, lang, request_id):
+                if not yielded:
+                    self._backend_used.set(backend_name(self.fallback))
                 yield chunk
+                yielded = True
+            if not yielded:
+                self._backend_used.set(backend_name(self.fallback))
+
+    def backend_used(self) -> str | None:
+        """Return the backend selected for the current request context."""
+        return self._backend_used.get()
+
+
+def backend_name(adapter: ModelAdapter) -> str:
+    """Return the actual backend used by an adapter for the current request."""
+    backend_used = getattr(adapter, "backend_used", None)
+    if callable(backend_used):
+        selected = backend_used()
+        if selected:
+            return str(selected)
+    return adapter.name
 
 
 def build_adapter(settings: Settings) -> ModelAdapter:

@@ -31,7 +31,7 @@ from .metrics import (
     STREAMS_TOTAL,
     render_metrics,
 )
-from .models import ModelAdapter, build_adapter, cache_key, request_id
+from .models import ModelAdapter, backend_name, build_adapter, cache_key, request_id
 from .polza import PolzaRateLimited, PolzaRetryableError
 from .rate_limit import SlidingLimiter
 from .settings import Settings, get_settings
@@ -257,13 +257,14 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
             status_code=500, detail={"error": "server_error", "request_id": ctx.request_id}
         ) from err
 
-    state.cache.set(cache_key(ctx.text), corrected, state.adapter.name)
+    selected_backend = backend_name(state.adapter)
+    state.cache.set(cache_key(ctx.text), corrected, selected_backend)
     latency = int((time.time() - ctx.started_at) * 1000)
     record_request_outcome(ctx.endpoint, "ok", ctx.started_at)
     return {
         "request_id": ctx.request_id,
         "corrected_text": corrected,
-        "meta": {"model_backend": state.adapter.name, "latency_ms": latency},
+        "meta": {"model_backend": selected_backend, "latency_ms": latency},
     }
 
 
@@ -331,7 +332,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
         pending_delta = first_delta
         try:
             yield sse_event(
-                "meta", {"request_id": ctx.request_id, "model_backend": state.adapter.name}
+                "meta", {"request_id": ctx.request_id, "model_backend": backend_name(state.adapter)}
             )
             if stream_finished:
                 latency = int((time.time() - ctx.started_at) * 1000)
@@ -354,7 +355,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
                     latency = int((time.time() - ctx.started_at) * 1000)
                     yield sse_event("done", {"request_id": ctx.request_id, "latency_ms": latency})
                     if corrected:
-                        state.cache.set(cache_key(ctx.text), corrected, state.adapter.name)
+                        state.cache.set(cache_key(ctx.text), corrected, backend_name(state.adapter))
                     state.total_streams_done += 1
                     record_stream_outcome("ok")
                     break

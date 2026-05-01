@@ -8,7 +8,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from backend.main import AppState, app
-from backend.models import ModelAdapter
+from backend.models import FallbackAdapter, ModelAdapter
+from backend.polza import PolzaRetryableError
 from backend.settings import Settings
 
 
@@ -43,6 +44,45 @@ class CountingAdapter(DeterministicAdapter):
         self.stream_calls += 1
         async for chunk in super().correct_stream(text, lang, request_id):
             yield chunk
+
+
+class PrimaryOkAdapter(ModelAdapter):
+    name = "polza"
+
+    async def correct(self, text: str, lang: str, request_id: str) -> str:  # noqa: ARG002
+        return "primary"
+
+    async def correct_stream(
+        self, text: str, lang: str, request_id: str
+    ) -> AsyncGenerator[str, None]:  # noqa: ARG002
+        yield "pri"
+        yield "mary"
+
+
+class PrimaryRetryableAdapter(ModelAdapter):
+    name = "polza"
+
+    async def correct(self, text: str, lang: str, request_id: str) -> str:  # noqa: ARG002
+        raise PolzaRetryableError("temporary", status_code=503)
+
+    async def correct_stream(
+        self, text: str, lang: str, request_id: str
+    ) -> AsyncGenerator[str, None]:  # noqa: ARG002
+        raise PolzaRetryableError("temporary", status_code=503)
+        yield ""
+
+
+class FallbackOkAdapter(ModelAdapter):
+    name = "gemini"
+
+    async def correct(self, text: str, lang: str, request_id: str) -> str:  # noqa: ARG002
+        return "fallback"
+
+    async def correct_stream(
+        self, text: str, lang: str, request_id: str
+    ) -> AsyncGenerator[str, None]:  # noqa: ARG002
+        yield "fall"
+        yield "back"
 
 
 def setup_state(**overrides):
@@ -501,6 +541,64 @@ async def test_cache_hit():
 
         metrics = await client.get("/metrics")
         assert "gec_cache_hits_total" in metrics.text
+
+
+@pytest.mark.asyncio
+async def test_correct_metadata_reports_actual_primary_backend_from_wrapper():
+    setup_state(rate_limit_per_minute=1000, rate_limit_per_day=1000)
+    app.state.app_state.adapter = FallbackAdapter(PrimaryOkAdapter(), FallbackOkAdapter())
+
+    async with make_client() as client:
+        response = await client.post("/v1/correct", json={"text": "hello"})
+
+    assert response.status_code == 200
+    assert response.json()["corrected_text"] == "primary"
+    assert response.json()["meta"]["model_backend"] == "polza"
+
+
+@pytest.mark.asyncio
+async def test_correct_metadata_reports_actual_fallback_backend_from_wrapper():
+    setup_state(rate_limit_per_minute=1000, rate_limit_per_day=1000)
+    app.state.app_state.adapter = FallbackAdapter(PrimaryRetryableAdapter(), FallbackOkAdapter())
+
+    async with make_client() as client:
+        response = await client.post("/v1/correct", json={"text": "hello"})
+
+    assert response.status_code == 200
+    assert response.json()["corrected_text"] == "fallback"
+    assert response.json()["meta"]["model_backend"] == "gemini"
+
+
+@pytest.mark.asyncio
+async def test_stream_metadata_reports_actual_primary_backend_from_wrapper():
+    setup_state(rate_limit_per_minute=1000, rate_limit_per_day=1000)
+    app.state.app_state.adapter = FallbackAdapter(PrimaryOkAdapter(), FallbackOkAdapter())
+
+    async with (
+        make_client() as client,
+        client.stream("POST", "/v1/correct/stream", json={"text": "hello"}) as response,
+    ):
+        assert response.status_code == 200
+        events = await collect_events(response)
+
+    meta = next(payload for name, payload in events if name == "meta")
+    assert meta["model_backend"] == "polza"
+
+
+@pytest.mark.asyncio
+async def test_stream_metadata_reports_actual_fallback_backend_from_wrapper():
+    setup_state(rate_limit_per_minute=1000, rate_limit_per_day=1000)
+    app.state.app_state.adapter = FallbackAdapter(PrimaryRetryableAdapter(), FallbackOkAdapter())
+
+    async with (
+        make_client() as client,
+        client.stream("POST", "/v1/correct/stream", json={"text": "hello"}) as response,
+    ):
+        assert response.status_code == 200
+        events = await collect_events(response)
+
+    meta = next(payload for name, payload in events if name == "meta")
+    assert meta["model_backend"] == "gemini"
 
 
 async def collect_events(response):
