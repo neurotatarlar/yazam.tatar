@@ -142,15 +142,14 @@ def record_rate_limited(state: AppState, endpoint: str, started_at: float | None
 
 async def parse_and_validate_correction_request(
     request: Request, max_body_bytes: int, max_chars: int
-) -> tuple[str, str]:
+) -> str:
     """Parse and validate correction request payload."""
     ensure_json_request(request)
     await enforce_body_size(request, max_body_bytes)
     body = await parse_json_body(request)
     text = str(body.get("text", ""))
-    lang = resolve_correction_lang(body)
     validate_text(text, max_chars)
-    return text, lang
+    return text
 
 
 @app.post("/v1/correct")
@@ -159,7 +158,7 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
     state.total_requests += 1
     started = time.time()
     try:
-        text, lang = await parse_and_validate_correction_request(
+        text = await parse_and_validate_correction_request(
             request, state.settings.max_body_bytes, state.settings.max_chars
         )
     except HTTPException:
@@ -183,7 +182,7 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
         }
 
     try:
-        corrected = await state.adapter.correct(text, lang, rid)
+        corrected = await state.adapter.correct(text, "tt", rid)
     except GeminiKeyExhausted as err:
         record_rate_limited(state, "correct", started)
         raise HTTPException(
@@ -212,7 +211,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
     """Stream correction output as server-sent events."""
     state.total_requests += 1
     try:
-        text, lang = await parse_and_validate_correction_request(
+        text = await parse_and_validate_correction_request(
             request, state.settings.max_body_bytes, state.settings.max_chars
         )
     except HTTPException:
@@ -248,7 +247,7 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
         STREAMS_TOTAL.labels(outcome=outcome).inc()
         STREAM_DURATION.observe(time.time() - started)
 
-    stream_iter = state.adapter.correct_stream(text, lang, rid)
+    stream_iter = state.adapter.correct_stream(text, "tt", rid)
     first_delta: str | None = None
     stream_finished = False
     if getattr(state.adapter, "prefetch_first_chunk", False):
@@ -360,27 +359,6 @@ def validate_text(text: str, max_chars: int):
         raise HTTPException(
             status_code=400, detail={"error": "invalid_input", "message": "too_long"}
         )
-
-
-def resolve_correction_lang(payload: dict[str, Any]) -> str:
-    """Accept only Tatar correction language and default missing values to tt."""
-    raw = payload.get("lang")
-    if raw is None:
-        return "tt"
-    if not isinstance(raw, str):
-        raise HTTPException(
-            status_code=400,
-            detail={"error": "invalid_input", "message": "invalid_lang"},
-        )
-    value = raw.strip().lower()
-    if not value:
-        return "tt"
-    if value != "tt":
-        raise HTTPException(
-            status_code=400,
-            detail={"error": "invalid_input", "message": "unsupported_lang"},
-        )
-    return "tt"
 
 
 def ensure_json_request(request: Request) -> None:

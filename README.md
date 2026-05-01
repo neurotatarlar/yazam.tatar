@@ -64,14 +64,14 @@ See `deploy/README.md` for the GitHub Actions setup (manual init + auto deploy o
 
 Payload shape:
 ```json
-{ "text": "...", "lang": "tt" }
+{ "text": "..." }
 ```
 
 Validation: rejects empty/whitespace-only text; enforces `MAX_CHARS`. Rate limits per minute/day plus max concurrent streams per IP.
 `X-Forwarded-For` is only trusted when the direct peer is in `TRUSTED_PROXY_IPS`.
 
 ## Configuration
-See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MODEL_BACKEND` supports `polza`, `gemini`, and `mock`.
+See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MODEL_BACKEND` supports `polza` and `gemini`.
 For Polza primary mode, set `MODEL_BACKEND=polza`, `POLZA_API_KEY`, and `POLZA_MODEL` (default `google/gemini-3.1-flash-lite-preview`). Backend keeps direct Gemini as rollback when `GEMINI_API_KEYS` is set.
 
 ## Dev tools

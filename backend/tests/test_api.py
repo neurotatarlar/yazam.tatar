@@ -12,13 +12,32 @@ from backend.models import ModelAdapter
 from backend.settings import Settings
 
 
+class DeterministicAdapter(ModelAdapter):
+    name = "test"
+
+    async def correct(self, text: str, lang: str, request_id: str) -> str:  # noqa: ARG002
+        return " ".join(text.split()).strip().capitalize()
+
+    async def correct_stream(
+        self, text: str, lang: str, request_id: str
+    ) -> AsyncGenerator[str, None]:  # noqa: ARG002
+        corrected = await self.correct(text, lang, request_id)
+        for chunk in [corrected[i : i + 5] for i in range(0, len(corrected), 5)]:
+            yield chunk
+
+
 def setup_state(**overrides):
     if "model_backend" not in overrides:
-        overrides["model_backend"] = "mock"
+        overrides["model_backend"] = "polza"
+    if "polza_api_key" not in overrides:
+        overrides["polza_api_key"] = "test-polza-key"
+    if "polza_model" not in overrides:
+        overrides["polza_model"] = "google/gemini-3.1-flash-lite-preview"
     if "trusted_proxy_ips" not in overrides:
         overrides["trusted_proxy_ips"] = ["127.0.0.1", "::1", "testclient"]
     settings = Settings(**overrides)
     app.state.app_state = AppState(settings)
+    app.state.app_state.adapter = DeterministicAdapter()
     return app
 
 
@@ -47,7 +66,7 @@ async def test_status_and_metrics():
     async with make_client() as client:
         response = await client.post(
             "/v1/correct",
-            json={"text": "hello", "lang": "tt", "client": {"platform": "test"}},
+            json={"text": "hello"},
         )
         assert response.status_code == 200
 
@@ -419,19 +438,14 @@ async def test_concurrency_guard_is_per_ip():
 
 
 @pytest.mark.asyncio
-async def test_lang_defaults_to_tatar_and_rejects_other_values():
+async def test_lang_field_is_ignored_and_tatar_is_always_used():
     setup_state()
     async with make_client() as client:
         response = await client.post("/v1/correct", json={"text": "hello"})
         assert response.status_code == 200
 
-        invalid = await client.post("/v1/correct", json={"text": "hello", "lang": 123})
-        assert invalid.status_code == 400
-        assert invalid.json()["detail"]["message"] == "invalid_lang"
-
-        unsupported = await client.post("/v1/correct", json={"text": "hello", "lang": "ru"})
-        assert unsupported.status_code == 400
-        assert unsupported.json()["detail"]["message"] == "unsupported_lang"
+        ignored = await client.post("/v1/correct", json={"text": "hello", "lang": "ru"})
+        assert ignored.status_code == 200
 
         async with client.stream(
             "POST",
@@ -444,16 +458,9 @@ async def test_lang_defaults_to_tatar_and_rejects_other_values():
         async with client.stream(
             "POST",
             "/v1/correct/stream",
-            json={"text": "hello", "lang": 123},
-        ) as stream_response:
-            assert stream_response.status_code == 400
-
-        async with client.stream(
-            "POST",
-            "/v1/correct/stream",
             json={"text": "hello", "lang": "en"},
         ) as stream_response:
-            assert stream_response.status_code == 400
+            assert stream_response.status_code == 200
 
 
 @pytest.mark.asyncio

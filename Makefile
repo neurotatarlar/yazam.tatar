@@ -70,4 +70,4 @@ docker-down:
 	docker compose down
 
 sse-test:
-	curl -N -X POST http://localhost:3000/v1/correct/stream -H "Content-Type: application/json" -d '{"text":"сина рәхмәт","lang":"tt","client":{"platform":"cli","version":"demo"}}'
+	curl -N -X POST http://localhost:3000/v1/correct/stream -H "Content-Type: application/json" -d '{"text":"сина рәхмәт"}'

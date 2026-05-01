@@ -1,20 +1,5 @@
-import pytest
-
-from backend.models import FallbackAdapter, MockAdapter, build_adapter, normalize
+from backend.models import FallbackAdapter, build_adapter, normalize
 from backend.settings import Settings
-
-
-@pytest.mark.asyncio
-async def test_mock_adapter_stream_roundtrip():
-    adapter = MockAdapter()
-    text = "hello   world"
-    corrected = await adapter.correct(text, "tt", "rid")
-
-    chunks = []
-    async for chunk in adapter.correct_stream(text, "tt", "rid"):
-        chunks.append(chunk)
-
-    assert "".join(chunks) == corrected
 
 
 def test_normalize():
@@ -43,3 +28,12 @@ def test_build_adapter_polza_with_gemini_fallback():
         )
     )
     assert isinstance(adapter, FallbackAdapter)
+
+
+def test_build_adapter_rejects_unsupported_backend():
+    try:
+        build_adapter(Settings(model_backend="mock"))
+    except ValueError as err:
+        assert "Unsupported MODEL_BACKEND" in str(err)
+    else:
+        raise AssertionError("Unsupported backend should raise ValueError")

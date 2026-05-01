@@ -1,6 +1,5 @@
 """Adapter contracts and text utilities for correction backends."""
 
-import asyncio
 import hashlib
 import logging
 import uuid
@@ -80,23 +79,6 @@ class FallbackAdapter(ModelAdapter):
                 yield chunk
 
 
-class MockAdapter(ModelAdapter):
-    """Deterministic adapter for local development."""
-
-    name = "mock"
-
-    async def correct(self, text: str, lang: str, request_id: str) -> str:  # noqa: ARG002
-        """Normalize input without any model call."""
-        return normalize(text)
-
-    async def correct_stream(self, text: str, lang: str, request_id: str):  # noqa: ARG002
-        """Yield normalized text in small chunks with delays."""
-        corrected = await self.correct(text, lang, request_id)
-        for chunk in chunk_text(corrected, 28):
-            await asyncio.sleep(0.12)
-            yield chunk
-
-
 def build_adapter(settings: Settings) -> ModelAdapter:
     """Select a model adapter based on configuration."""
     backend = settings.model_backend.strip().lower()
@@ -126,8 +108,6 @@ def build_adapter(settings: Settings) -> ModelAdapter:
         from .gemini import GeminiAdapter
 
         return GeminiAdapter(settings.gemini_api_keys, settings.gemini_model)
-    if backend == "mock":
-        return MockAdapter()
     raise ValueError(f"Unsupported MODEL_BACKEND: {settings.model_backend}")
 
 
