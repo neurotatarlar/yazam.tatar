@@ -82,9 +82,6 @@ For Polza primary mode, set `MODEL_BACKEND=polza`, `POLZA_API_KEY`, and `POLZA_M
 ## Deployment
 - Systemd unit files live in `deploy/systemd/`.
 - Example Nginx configs (including SSE-friendly settings) live in `deploy/nginx/`.
-- Scheduled operational checks:
-  - `.github/workflows/dependency-audit.yml` (weekly dependency vulnerability + integrity scans)
-  - `.github/workflows/runtime-observability.yml` (hourly `/health`, `/status`, `/metrics` probes)
 
 ## SSE troubleshooting
 - Ensure reverse proxy disables buffering and respects long-lived connections.

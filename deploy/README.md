@@ -15,15 +15,10 @@ Web UI artifacts are assembled from:
 - VPN policy systemd: `gec-tt-vpn-policy`
 
 ## Workflows
-- `environment bootstrap` (`.github/workflows/dev-init.yml`): manual bootstrap for `demo` or `production`
-- `environment deploy` (`.github/workflows/dev-deploy.yml`):
+- `environment bootstrap` (`.github/workflows/environment-init.yml`): manual bootstrap for `demo` or `production`
+- `environment deploy` (`.github/workflows/environment-deploy.yml`):
   - `master` -> deploy `demo`
   - `release` -> deploy `production`
-- `release package` (`.github/workflows/release.yml`): manual tagged package release
-- `full qa gate` (`.github/workflows/qa-full.yml`): automated reliability gate (backend lint/security/tests + integration/e2e smoke + web smoke tests)
-- `web smoke tests` (`.github/workflows/web-smoke.yml`): lightweight UI smoke checks for web changes
-- `dependency audits` (`.github/workflows/dependency-audit.yml`): weekly pip/npm vulnerability scans with `pip check`
-- `runtime observability checks` (`.github/workflows/runtime-observability.yml`): hourly checks for `/health`, `/status`, `/metrics` on public environments
 
 ## VPS preparation (first run)
 1) Install packages:
@@ -72,10 +67,6 @@ Per environment, optional vars:
 - `CERTBOT_PRIMARY_DOMAIN` (default `yazam.tatar`)
 - `CERTBOT_EXTRA_DOMAINS` (comma-separated, example `www.yazam.tatar`)
 - `CERTBOT_RENEW_DRY_RUN` (`true`/`false`, default `false`)
-
-Repository vars used by `runtime observability checks`:
-- `PROD_HEALTH_URL`, `PROD_STATUS_URL`, `PROD_METRICS_URL` (optional; defaults point to `https://yazam.tatar/api/*`)
-- `DEMO_HEALTH_URL`, `DEMO_STATUS_URL`, `DEMO_METRICS_URL` (optional; if `DEMO_STATUS_URL` is unset, demo checks are skipped)
 
 Defaults by environment if `NGINX_SITE` is not set:
 - `demo` -> `/etc/nginx/sites-available/gec-annotation.conf`
