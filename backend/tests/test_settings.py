@@ -25,6 +25,8 @@ def test_polza_defaults(monkeypatch):
 
     assert settings.polza_base_url == "https://polza.ai/api/v1"
     assert settings.polza_model == "google/gemini-3.1-flash-lite-preview"
+    assert settings.polza_timeout_seconds == 25
+    assert settings.polza_connect_timeout_seconds == 10
     assert settings.polza_provider_allow_fallbacks is False
     assert settings.polza_provider_only == ["Google"]
 
@@ -32,7 +34,9 @@ def test_polza_defaults(monkeypatch):
 def test_polza_boolean_and_list_parsing(monkeypatch):
     monkeypatch.setenv("POLZA_PROVIDER_ALLOW_FALLBACKS", "true")
     monkeypatch.setenv("POLZA_PROVIDER_ONLY", "Google,OpenRouter")
+    monkeypatch.setenv("POLZA_CONNECT_TIMEOUT_SECONDS", "12")
     settings = Settings()
 
     assert settings.polza_provider_allow_fallbacks is True
     assert settings.polza_provider_only == ["Google", "OpenRouter"]
+    assert settings.polza_connect_timeout_seconds == 12

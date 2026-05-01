@@ -122,6 +122,7 @@ def build_adapter(settings: Settings) -> ModelAdapter:
             model=settings.polza_model,
             base_url=settings.polza_base_url,
             timeout_seconds=settings.polza_timeout_seconds,
+            connect_timeout_seconds=settings.polza_connect_timeout_seconds,
             provider=PolzaProviderConfig(
                 allow_fallbacks=settings.polza_provider_allow_fallbacks,
                 only=settings.polza_provider_only,

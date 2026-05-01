@@ -73,6 +73,9 @@ class Settings:
     polza_timeout_seconds: int = field(
         default_factory=lambda: _get_int("POLZA_TIMEOUT_SECONDS", 25)
     )
+    polza_connect_timeout_seconds: int = field(
+        default_factory=lambda: _get_int("POLZA_CONNECT_TIMEOUT_SECONDS", 10)
+    )
     polza_provider_allow_fallbacks: bool = field(
         default_factory=lambda: _get_bool("POLZA_PROVIDER_ALLOW_FALLBACKS", False)
     )

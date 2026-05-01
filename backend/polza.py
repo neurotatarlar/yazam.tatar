@@ -61,12 +61,14 @@ class PolzaAdapter(ModelAdapter):
         model: str,
         base_url: str,
         timeout_seconds: int,
+        connect_timeout_seconds: int,
         provider: PolzaProviderConfig,
     ):
         self._api_key = api_key.strip()
         self._model = model.strip()
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout_seconds
+        self._connect_timeout = connect_timeout_seconds
         self._provider = provider
         self._logger = logging.getLogger("backend")
 
@@ -92,7 +94,9 @@ class PolzaAdapter(ModelAdapter):
         url = f"{self._base_url}/chat/completions"
         headers = self._headers()
 
-        timeout = httpx.Timeout(connect=5.0, read=None, write=10.0, pool=5.0)
+        timeout = httpx.Timeout(
+            connect=float(self._connect_timeout), read=None, write=10.0, pool=5.0
+        )
         async with httpx.AsyncClient(timeout=timeout) as client:
             try:
                 async with client.stream("POST", url, headers=headers, json=payload) as response:
@@ -183,7 +187,9 @@ class PolzaAdapter(ModelAdapter):
 
     async def _post_json(self, payload: dict[str, object]) -> dict[str, object]:
         url = f"{self._base_url}/chat/completions"
-        timeout = httpx.Timeout(connect=5.0, read=float(self._timeout), write=10.0, pool=5.0)
+        timeout = httpx.Timeout(
+            connect=float(self._connect_timeout), read=float(self._timeout), write=10.0, pool=5.0
+        )
         async with httpx.AsyncClient(timeout=timeout) as client:
             try:
                 response = await client.post(url, headers=self._headers(), json=payload)

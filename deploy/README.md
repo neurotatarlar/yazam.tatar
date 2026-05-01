@@ -61,6 +61,7 @@ Per environment, optional vars:
 - `POLZA_BASE_URL` (default `https://polza.ai/api/v1`)
 - `POLZA_MODEL` (default `google/gemini-3.1-flash-lite-preview`)
 - `POLZA_TIMEOUT_SECONDS` (default `25`)
+- `POLZA_CONNECT_TIMEOUT_SECONDS` (default `10`)
 - `POLZA_PROVIDER_ALLOW_FALLBACKS` (`true`/`false`, default `false`)
 - `POLZA_PROVIDER_ONLY` (default `Google`)
 - `GEMINI_MODEL` (default `gemini-3-flash-preview`)

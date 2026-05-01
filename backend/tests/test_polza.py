@@ -125,6 +125,7 @@ def test_polza_error_mapping_balance_is_retryable():
         model="google/gemini-3.1-flash-lite-preview",
         base_url="https://polza.ai/api/v1",
         timeout_seconds=10,
+        connect_timeout_seconds=10,
         provider=PolzaProviderConfig(allow_fallbacks=False, only=["Google"]),
     )
     with pytest.raises(PolzaRetryableError):
@@ -141,6 +142,7 @@ def test_polza_error_mapping_auth_is_non_retryable():
         model="google/gemini-3.1-flash-lite-preview",
         base_url="https://polza.ai/api/v1",
         timeout_seconds=10,
+        connect_timeout_seconds=10,
         provider=PolzaProviderConfig(allow_fallbacks=False, only=["Google"]),
     )
     with pytest.raises(PolzaNonRetryableError):
