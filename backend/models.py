@@ -97,42 +97,6 @@ class MockAdapter(ModelAdapter):
             yield chunk
 
 
-class PromptAdapter(ModelAdapter):
-    """Adapter that tags output with a prompt version."""
-
-    def __init__(self, prompt_version: str):
-        self.prompt_version = prompt_version
-        self.name = "prompt"
-
-    async def correct(self, text: str, lang: str, request_id: str) -> str:  # noqa: ARG002
-        """Normalize input and append the prompt version marker."""
-        return f"{normalize(text)} [prompt:{self.prompt_version}]"
-
-    async def correct_stream(self, text: str, lang: str, request_id: str):  # noqa: ARG002
-        """Yield prompt-tagged output in chunks."""
-        corrected = await self.correct(text, lang, request_id)
-        for chunk in chunk_text(corrected, 28):
-            await asyncio.sleep(0.12)
-            yield chunk
-
-
-class LocalAdapter(ModelAdapter):
-    """Placeholder for a local model backend."""
-
-    name = "local"
-
-    async def correct(self, text: str, lang: str, request_id: str) -> str:  # noqa: ARG002
-        """Normalize input and append a local-model marker."""
-        return f"{normalize(text)} [local-model]"
-
-    async def correct_stream(self, text: str, lang: str, request_id: str):  # noqa: ARG002
-        """Yield local-model output in chunks."""
-        corrected = await self.correct(text, lang, request_id)
-        for chunk in chunk_text(corrected, 32):
-            await asyncio.sleep(0.1)
-            yield chunk
-
-
 def build_adapter(settings: Settings) -> ModelAdapter:
     """Select a model adapter based on configuration."""
     backend = settings.model_backend.strip().lower()
@@ -162,11 +126,9 @@ def build_adapter(settings: Settings) -> ModelAdapter:
         from .gemini import GeminiAdapter
 
         return GeminiAdapter(settings.gemini_api_keys, settings.gemini_model)
-    if backend == "prompt":
-        return PromptAdapter(settings.prompt_version)
-    if backend == "local":
-        return LocalAdapter()
-    return MockAdapter()
+    if backend == "mock":
+        return MockAdapter()
+    raise ValueError(f"Unsupported MODEL_BACKEND: {settings.model_backend}")
 
 
 def normalize(text: str) -> str:

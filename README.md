@@ -14,12 +14,11 @@ Streaming grammar/spell correction prototype for Tatar (Cyrillic). Single-page U
 
 ## Deployment (dev VPS)
 See `deploy/README.md` for the GitHub Actions setup (manual init + auto deploy on `master`).
-Deploy pipeline now waits for the `full qa gate` workflow to succeed for the same commit before rollout.
 
 ## Project structure
 - `backend/` — FastAPI service (SSE streaming + rate limiting + metrics)
   - `backend/main.py` — API routes (`/health`, `/status`, `/metrics`, `/v1/correct`, `/v1/correct/stream`)
-  - `backend/models.py` — model adapter interface + mock/prompt/local adapters
+  - `backend/models.py` — model adapter interface + Polza/Gemini adapters
   - `backend/settings.py` — env-driven config (`MAX_CHARS`, limits, backend selection)
   - `backend/rate_limit.py` — in-memory per-IP rate limiter
   - `backend/cache.py` — small TTL cache to avoid duplicate calls
@@ -65,14 +64,14 @@ Deploy pipeline now waits for the `full qa gate` workflow to succeed for the sam
 
 Payload shape:
 ```json
-{ "text": "...", "lang": "tt", "client": { "platform": "web|mobile", "version": "..." } }
+{ "text": "...", "lang": "tt" }
 ```
 
 Validation: rejects empty/whitespace-only text; enforces `MAX_CHARS`. Rate limits per minute/day plus max concurrent streams per IP.
 `X-Forwarded-For` is only trusted when the direct peer is in `TRUSTED_PROXY_IPS`.
 
 ## Configuration
-See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MODEL_BACKEND` supports `polza`, `gemini`, `mock`, `prompt`, `local` adapters; swap without UI changes.
+See `.env.example` for tunables (ports, limits, backend adapter, heartbeat). `MODEL_BACKEND` supports `polza`, `gemini`, and `mock`.
 For Polza primary mode, set `MODEL_BACKEND=polza`, `POLZA_API_KEY`, and `POLZA_MODEL` (default `google/gemini-3.1-flash-lite-preview`). Backend keeps direct Gemini as rollback when `GEMINI_API_KEYS` is set.
 
 ## Dev tools

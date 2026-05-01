@@ -1,6 +1,6 @@
 import pytest
 
-from backend.models import FallbackAdapter, MockAdapter, PromptAdapter, build_adapter, normalize
+from backend.models import FallbackAdapter, MockAdapter, build_adapter, normalize
 from backend.settings import Settings
 
 
@@ -15,13 +15,6 @@ async def test_mock_adapter_stream_roundtrip():
         chunks.append(chunk)
 
     assert "".join(chunks) == corrected
-
-
-@pytest.mark.asyncio
-async def test_prompt_adapter_includes_version():
-    adapter = PromptAdapter("v1")
-    corrected = await adapter.correct("text", "tt", "rid")
-    assert "prompt:v1" in corrected
 
 
 def test_normalize():

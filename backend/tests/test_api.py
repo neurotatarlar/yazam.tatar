@@ -745,8 +745,8 @@ async def test_error_mapping_consistency():
 
 
 @pytest.mark.asyncio
-async def test_response_metadata_no_prompt_leak():
-    setup_state(model_backend="prompt", prompt_version="v2")
+async def test_response_metadata_no_internal_leak():
+    setup_state()
     async with make_client() as client:
         response = await client.post(
             "/v1/correct",
@@ -754,7 +754,7 @@ async def test_response_metadata_no_prompt_leak():
         )
         assert response.status_code == 200
         meta = response.json()["meta"]
-        assert "prompt_version" not in meta
+        assert "model_backend" in meta
         assert "cache_ttl_ms" not in meta
         assert "rate_limit_per_minute" not in meta
 
@@ -767,7 +767,7 @@ async def test_response_metadata_no_prompt_leak():
             events = await collect_events(stream_response)
 
         meta_event = next(payload for name, payload in events if name == "meta")
-        assert "prompt_version" not in meta_event
+        assert "request_id" in meta_event
 
 
 @pytest.mark.asyncio

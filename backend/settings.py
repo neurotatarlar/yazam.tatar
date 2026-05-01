@@ -58,7 +58,6 @@ class Settings:
         default_factory=lambda: _get_list("TRUSTED_PROXY_IPS") or ["127.0.0.1", "::1"]
     )
     model_backend: str = field(default_factory=lambda: _get("MODEL_BACKEND", "polza"))
-    prompt_version: str = field(default_factory=lambda: _get("PROMPT_VERSION", "v1"))
     cache_ttl_ms: int = field(default_factory=lambda: _get_int("CACHE_TTL_MS", 60000))
     gemini_model: str = field(
         default_factory=lambda: _get("GEMINI_MODEL", "gemini-3-flash-preview")
