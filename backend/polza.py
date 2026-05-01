@@ -96,7 +96,12 @@ class PolzaAdapter(ModelAdapter):
         async with httpx.AsyncClient(timeout=timeout) as client:
             try:
                 async with client.stream("POST", url, headers=headers, json=payload) as response:
-                    self._raise_for_status(response.status_code, response.text)
+                    if response.status_code >= 400:
+                        error_body = await response.aread()
+                        self._raise_for_status(
+                            response.status_code, error_body.decode("utf-8", errors="replace")
+                        )
+                    emitted_any = False
                     async for line in response.aiter_lines():
                         if not line:
                             continue
@@ -110,6 +115,17 @@ class PolzaAdapter(ModelAdapter):
                         chunk = parse_sse_chunk(data)
                         if chunk is None:
                             continue
+                        error_obj = chunk.get("error")
+                        if isinstance(error_obj, dict):
+                            message_obj = error_obj.get("message")
+                            message = (
+                                str(message_obj)
+                                if isinstance(message_obj, str)
+                                else "Upstream request failed."
+                            )
+                            code_obj = error_obj.get("code")
+                            code = str(code_obj) if isinstance(code_obj, str) else None
+                            self._raise_from_error(message=message, code=code, status_code=200)
 
                         usage = chunk.get("usage")
                         if isinstance(usage, dict):
@@ -123,10 +139,22 @@ class PolzaAdapter(ModelAdapter):
                             continue
                         delta = first.get("delta")
                         if not isinstance(delta, dict):
+                            delta = {}
+
+                        delta_text = extract_text_value(delta.get("content"))
+                        if delta_text:
+                            emitted_any = True
+                            yield delta_text
                             continue
-                        content = delta.get("content")
-                        if isinstance(content, str) and content:
-                            yield content
+
+                        # Some providers return full message text in chunk.message.content.
+                        if not emitted_any:
+                            message_payload = first.get("message")
+                            if isinstance(message_payload, dict):
+                                message_text = extract_text_value(message_payload.get("content"))
+                                if message_text:
+                                    emitted_any = True
+                                    yield message_text
             except httpx.TimeoutException as err:
                 raise PolzaRetryableError("Polza request timed out.") from err
             except httpx.RequestError as err:
@@ -167,15 +195,30 @@ class PolzaAdapter(ModelAdapter):
         data = response.json()
         if not isinstance(data, dict):
             raise PolzaRetryableError("Unexpected Polza response format.")
+        error_obj = data.get("error")
+        if isinstance(error_obj, dict):
+            message_obj = error_obj.get("message")
+            message = (
+                str(message_obj) if isinstance(message_obj, str) else "Upstream request failed."
+            )
+            code_obj = error_obj.get("code")
+            code = str(code_obj) if isinstance(code_obj, str) else None
+            self._raise_from_error(message=message, code=code, status_code=response.status_code)
         return data
 
     def _raise_for_status(self, status_code: int, body_text: str) -> None:
         if status_code < 400:
             return
         message, code = parse_error_message(body_text)
+        self._raise_from_error(message=message, code=code, status_code=status_code)
+
+    def _raise_from_error(self, *, message: str, code: str | None, status_code: int) -> None:
         if status_code == 429:
             raise PolzaRateLimited(message, status_code=status_code, code=code)
-        if status_code in {408, 500, 502, 503}:
+        # If Polza balance is exhausted, fallback to direct Gemini (free tier) when configured.
+        if status_code in {402, 408, 500, 502, 503}:
+            raise PolzaRetryableError(message, status_code=status_code, code=code)
+        if code == "INSUFFICIENT_BALANCE":
             raise PolzaRetryableError(message, status_code=status_code, code=code)
         raise PolzaNonRetryableError(message, status_code=status_code, code=code)
 
@@ -247,9 +290,15 @@ def extract_content(payload: dict[str, object]) -> str:
     if not isinstance(message, dict):
         raise PolzaRetryableError("Polza response has no message content.")
     content = message.get("content")
+    text = extract_text_value(content)
+    if text:
+        return text
+    raise PolzaRetryableError("Polza response content is missing.")
+
+
+def extract_text_value(content: object) -> str:
+    """Extract plain text from string or OpenAI-style content-part arrays."""
     if isinstance(content, str):
-        if not content:
-            raise PolzaRetryableError("Polza response content is empty.")
         return content
     if isinstance(content, list):
         text_parts: list[str] = []
@@ -261,7 +310,5 @@ def extract_content(payload: dict[str, object]) -> str:
             text = item.get("text")
             if isinstance(text, str):
                 text_parts.append(text)
-        joined = "".join(text_parts).strip()
-        if joined:
-            return joined
-    raise PolzaRetryableError("Polza response content is missing.")
+        return "".join(text_parts)
+    return ""

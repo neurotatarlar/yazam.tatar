@@ -2,11 +2,14 @@ import pytest
 
 from backend.models import FallbackAdapter, ModelAdapter
 from backend.polza import (
+    PolzaAdapter,
     PolzaNonRetryableError,
+    PolzaProviderConfig,
     PolzaRateLimited,
     PolzaRetryableError,
     build_system_instruction,
     extract_content,
+    extract_text_value,
     parse_error_message,
     parse_sse_chunk,
 )
@@ -100,3 +103,49 @@ def test_build_system_instruction_contains_lang_and_request_id():
     prompt = build_system_instruction("tt", "rid-1")
     assert "Language: tt" in prompt
     assert "Request-ID: rid-1" in prompt
+
+
+def test_extract_text_value_handles_string_and_parts():
+    assert extract_text_value("hello") == "hello"
+    assert (
+        extract_text_value(
+            [
+                {"type": "text", "text": "hel"},
+                {"type": "text", "text": "lo"},
+                {"type": "image_url", "image_url": {"url": "https://example.test/a.png"}},
+            ]
+        )
+        == "hello"
+    )
+
+
+def test_polza_error_mapping_balance_is_retryable():
+    adapter = PolzaAdapter(
+        api_key="x",
+        model="google/gemini-3.1-flash-lite-preview",
+        base_url="https://polza.ai/api/v1",
+        timeout_seconds=10,
+        provider=PolzaProviderConfig(allow_fallbacks=False, only=["Google"]),
+    )
+    with pytest.raises(PolzaRetryableError):
+        adapter._raise_from_error(
+            message="Недостаточно средств",
+            code="INSUFFICIENT_BALANCE",
+            status_code=200,
+        )
+
+
+def test_polza_error_mapping_auth_is_non_retryable():
+    adapter = PolzaAdapter(
+        api_key="x",
+        model="google/gemini-3.1-flash-lite-preview",
+        base_url="https://polza.ai/api/v1",
+        timeout_seconds=10,
+        provider=PolzaProviderConfig(allow_fallbacks=False, only=["Google"]),
+    )
+    with pytest.raises(PolzaNonRetryableError):
+        adapter._raise_from_error(
+            message="auth failed",
+            code="AUTH_ERROR",
+            status_code=401,
+        )
