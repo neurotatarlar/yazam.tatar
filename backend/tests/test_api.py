@@ -26,6 +26,25 @@ class DeterministicAdapter(ModelAdapter):
             yield chunk
 
 
+class CountingAdapter(DeterministicAdapter):
+    name = "counting"
+
+    def __init__(self):
+        self.correct_calls = 0
+        self.stream_calls = 0
+
+    async def correct(self, text: str, lang: str, request_id: str) -> str:
+        self.correct_calls += 1
+        return await super().correct(text, lang, request_id)
+
+    async def correct_stream(
+        self, text: str, lang: str, request_id: str
+    ) -> AsyncGenerator[str, None]:
+        self.stream_calls += 1
+        async for chunk in super().correct_stream(text, lang, request_id):
+            yield chunk
+
+
 def setup_state(**overrides):
     if "model_backend" not in overrides:
         overrides["model_backend"] = "polza"
@@ -633,6 +652,35 @@ async def test_stream_result_cached():
         )
         assert cached.status_code == 200
         assert cached.json()["meta"]["latency_ms"] == 0
+
+
+@pytest.mark.asyncio
+async def test_stream_uses_cached_correction_without_upstream_call():
+    setup_state(rate_limit_per_minute=1000, rate_limit_per_day=1000)
+    adapter = CountingAdapter()
+    app.state.app_state.adapter = adapter
+
+    async with make_client() as client:
+        first = await client.post(
+            "/v1/correct",
+            json={"text": "hello", "lang": "tt"},
+        )
+        assert first.status_code == 200
+        assert adapter.correct_calls == 1
+
+        async with client.stream(
+            "POST",
+            "/v1/correct/stream",
+            json={"text": "hello", "lang": "tt"},
+        ) as response:
+            assert response.status_code == 200
+            events = await collect_events(response)
+
+        event_names = [name for name, _ in events]
+        assert event_names == ["meta", "delta", "done"]
+        delta = next(payload for name, payload in events if name == "delta")
+        assert delta["text"] == first.json()["corrected_text"]
+        assert adapter.stream_calls == 0
 
 
 class FailingAdapter(ModelAdapter):

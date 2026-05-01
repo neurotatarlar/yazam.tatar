@@ -203,7 +203,8 @@ textarea {
   color: var(--muted);
 }
 
-.partner-minmol {
+.partner-minmol,
+.partner-tatfor {
   margin-top: 10px;
   min-height: 68px;
   display: flex;
@@ -211,24 +212,11 @@ textarea {
   align-items: center;
 }
 
-.partner-minmol span {
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-  font-family: Manrope, Inter, sans-serif;
-  font-size: 15px;
-  line-height: 1.15;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--text) 82%, transparent);
-}
-
 .partner-tatfor {
   margin-top: 8px;
-  min-height: 68px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
 }
 
+.partner-minmol span,
 .partner-tatfor span {
   white-space: pre-line;
   overflow-wrap: anywhere;

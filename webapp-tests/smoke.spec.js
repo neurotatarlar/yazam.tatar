@@ -65,3 +65,29 @@ test("clear button resets source and correction panels", async ({ page }) => {
   await expect(originalInput).toHaveValue("");
   await expect(correctedOutput).toHaveText("Төзәтелгән текст монда булыр");
 });
+
+test("abrupt stream close shows error and does not create history", async ({ page }) => {
+  await page.route("**/api/v1/correct/stream", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: [
+        "event: meta",
+        'data: {"request_id":"pw-smoke-2"}',
+        "",
+        "event: delta",
+        'data: {"text":"Өлешчә текст"}',
+        "",
+      ].join("\n"),
+    });
+  });
+
+  await page.goto("/");
+
+  await page.locator("#original-input").fill("Тарихка кермәскә тиеш.");
+  await page.locator("#btn-correct").click();
+
+  await expect(page.locator("#corrected-output")).toHaveText("Агым хатасы.");
+  await page.locator("#nav-history").click();
+  await expect(page.locator("#history-list")).toHaveText("Әлегә буш");
+});

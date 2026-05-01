@@ -10,7 +10,8 @@ import ipaddress
 import json
 import logging
 import time
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
+from dataclasses import dataclass
 from typing import Any
 
 from dotenv import load_dotenv
@@ -31,7 +32,7 @@ from .metrics import (
     render_metrics,
 )
 from .models import ModelAdapter, build_adapter, cache_key, request_id
-from .polza import PolzaRateLimited
+from .polza import PolzaRateLimited, PolzaRetryableError
 from .rate_limit import SlidingLimiter
 from .settings import Settings, get_settings
 
@@ -63,6 +64,17 @@ class AppState:
         self.total_streams_done = 0
         self.total_streams_cancelled = 0
         self.total_streams_error = 0
+
+
+@dataclass(slots=True)
+class CorrectionRequestContext:
+    """Validated request metadata shared by correction endpoints."""
+
+    endpoint: str
+    text: str
+    ip: str
+    request_id: str
+    started_at: float
 
 
 async def get_state() -> AppState:
@@ -140,6 +152,13 @@ def record_rate_limited(state: AppState, endpoint: str, started_at: float | None
     record_request_outcome(endpoint, "rate_limited", started_at)
 
 
+def record_cache_hit(state: AppState, endpoint: str, started_at: float | None = None) -> None:
+    """Track cache hits for one endpoint."""
+    state.total_cache_hits += 1
+    CACHE_HITS.inc()
+    record_request_outcome(endpoint, "cache", started_at)
+
+
 async def parse_and_validate_correction_request(
     request: Request, max_body_bytes: int, max_chars: int
 ) -> str:
@@ -152,9 +171,10 @@ async def parse_and_validate_correction_request(
     return text
 
 
-@app.post("/v1/correct")
-async def correct(request: Request, state: AppState = Depends(get_state)):
-    """Handle one-shot correction requests."""
+async def prepare_correction_request(
+    request: Request, state: AppState, endpoint: str
+) -> CorrectionRequestContext:
+    """Validate common correction request concerns and assign runtime metadata."""
     state.total_requests += 1
     started = time.time()
     try:
@@ -162,45 +182,86 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
             request, state.settings.max_body_bytes, state.settings.max_chars
         )
     except HTTPException:
-        record_invalid_request(state, "correct", started)
+        record_invalid_request(state, endpoint, started)
         raise
+
     ip = client_ip(request, state.trusted_proxy_ips)
     if not state.rates.allow(ip):
-        record_rate_limited(state, "correct", started)
+        record_rate_limited(state, endpoint, started)
         raise HTTPException(status_code=429, detail={"error": "rate_limited"})
 
-    rid = request_id()
-    cached = state.cache.get(cache_key(text))
+    return CorrectionRequestContext(
+        endpoint=endpoint,
+        text=text,
+        ip=ip,
+        request_id=request_id(),
+        started_at=started,
+    )
+
+
+def acquire_stream_slot(state: AppState, ctx: CorrectionRequestContext) -> Callable[[], None]:
+    """Reserve one concurrent stream slot and return an idempotent release callback."""
+    count = state.streams.get(ctx.ip, 0)
+    if count >= state.settings.max_concurrent_streams:
+        record_rate_limited(state, ctx.endpoint, ctx.started_at)
+        raise HTTPException(
+            status_code=429, detail={"error": "rate_limited", "message": "too_many_streams"}
+        )
+
+    state.streams[ctx.ip] = count + 1
+    STREAMS_ACTIVE.inc()
+    released = False
+
+    def release() -> None:
+        nonlocal released
+        if released:
+            return
+        released = True
+        state.streams[ctx.ip] = max(0, state.streams.get(ctx.ip, 1) - 1)
+        STREAMS_ACTIVE.dec()
+
+    return release
+
+
+@app.post("/v1/correct")
+async def correct(request: Request, state: AppState = Depends(get_state)):
+    """Handle one-shot correction requests."""
+    ctx = await prepare_correction_request(request, state, "correct")
+    cached = state.cache.get(cache_key(ctx.text))
     if cached:
-        state.total_cache_hits += 1
-        CACHE_HITS.inc()
-        record_request_outcome("correct", "cache", started)
+        record_cache_hit(state, ctx.endpoint, ctx.started_at)
         return {
-            "request_id": rid,
+            "request_id": ctx.request_id,
             "corrected_text": cached.value,
             "meta": {"model_backend": cached.backend, "latency_ms": 0},
         }
 
     try:
-        corrected = await state.adapter.correct(text, "tt", rid)
-    except GeminiKeyExhausted as err:
-        record_rate_limited(state, "correct", started)
+        corrected = await state.adapter.correct(ctx.text, "tt", ctx.request_id)
+    except (GeminiKeyExhausted, PolzaRateLimited) as err:
+        record_rate_limited(state, ctx.endpoint, ctx.started_at)
         raise HTTPException(
             status_code=429,
             detail={"error": "rate_limited", "message": str(err)},
         ) from err
+    except PolzaRetryableError as err:
+        state.total_errors += 1
+        record_request_outcome(ctx.endpoint, "error", ctx.started_at)
+        raise HTTPException(
+            status_code=502, detail={"error": "upstream_error", "request_id": ctx.request_id}
+        ) from err
     except Exception as err:  # noqa: BLE001
         state.total_errors += 1
-        record_request_outcome("correct", "error", started)
+        record_request_outcome(ctx.endpoint, "error", ctx.started_at)
         raise HTTPException(
-            status_code=500, detail={"error": "server_error", "request_id": rid}
+            status_code=500, detail={"error": "server_error", "request_id": ctx.request_id}
         ) from err
 
-    state.cache.set(cache_key(text), corrected, state.adapter.name)
-    latency = int((time.time() - started) * 1000)
-    record_request_outcome("correct", "ok", started)
+    state.cache.set(cache_key(ctx.text), corrected, state.adapter.name)
+    latency = int((time.time() - ctx.started_at) * 1000)
+    record_request_outcome(ctx.endpoint, "ok", ctx.started_at)
     return {
-        "request_id": rid,
+        "request_id": ctx.request_id,
         "corrected_text": corrected,
         "meta": {"model_backend": state.adapter.name, "latency_ms": latency},
     }
@@ -209,32 +270,23 @@ async def correct(request: Request, state: AppState = Depends(get_state)):
 @app.post("/v1/correct/stream")
 async def correct_stream(request: Request, state: AppState = Depends(get_state)):
     """Stream correction output as server-sent events."""
-    state.total_requests += 1
-    try:
-        text = await parse_and_validate_correction_request(
-            request, state.settings.max_body_bytes, state.settings.max_chars
+    ctx = await prepare_correction_request(request, state, "stream")
+    cached = state.cache.get(cache_key(ctx.text))
+    headers = stream_headers()
+    if cached:
+        record_cache_hit(state, ctx.endpoint, ctx.started_at)
+        state.total_streams_started += 1
+        state.total_streams_done += 1
+        STREAMS_TOTAL.labels(outcome="cache").inc()
+        STREAM_DURATION.observe(time.time() - ctx.started_at)
+        return StreamingResponse(
+            cached_event_stream(ctx, cached.value, cached.backend),
+            media_type="text/event-stream",
+            headers=headers,
         )
-    except HTTPException:
-        record_invalid_request(state, "stream")
-        raise
-    ip = client_ip(request, state.trusted_proxy_ips)
-    if not state.rates.allow(ip):
-        record_rate_limited(state, "stream")
-        raise HTTPException(status_code=429, detail={"error": "rate_limited"})
 
-    # concurrency guard
-    count = state.streams.get(ip, 0)
-    if count >= state.settings.max_concurrent_streams:
-        record_rate_limited(state, "stream")
-        raise HTTPException(
-            status_code=429, detail={"error": "rate_limited", "message": "too_many_streams"}
-        )
-    state.streams[ip] = count + 1
-
-    rid = request_id()
-    started = time.time()
+    release_stream_slot = acquire_stream_slot(state, ctx)
     state.total_streams_started += 1
-    STREAMS_ACTIVE.inc()
     outcome_recorded = False
 
     def record_stream_outcome(outcome: str):
@@ -243,11 +295,11 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
         if outcome_recorded:
             return
         outcome_recorded = True
-        REQUESTS_TOTAL.labels(endpoint="stream", outcome=outcome).inc()
+        REQUESTS_TOTAL.labels(endpoint=ctx.endpoint, outcome=outcome).inc()
         STREAMS_TOTAL.labels(outcome=outcome).inc()
-        STREAM_DURATION.observe(time.time() - started)
+        STREAM_DURATION.observe(time.time() - ctx.started_at)
 
-    stream_iter = state.adapter.correct_stream(text, "tt", rid)
+    stream_iter = state.adapter.correct_stream(ctx.text, "tt", ctx.request_id)
     first_delta: str | None = None
     stream_finished = False
     if getattr(state.adapter, "prefetch_first_chunk", False):
@@ -255,21 +307,22 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
             first_delta = await stream_iter.__anext__()
         except StopAsyncIteration:
             stream_finished = True
-        except GeminiKeyExhausted as err:
-            record_rate_limited(state, "stream")
+        except (GeminiKeyExhausted, PolzaRateLimited) as err:
+            record_rate_limited(state, ctx.endpoint, ctx.started_at)
             record_stream_outcome("rate_limited")
-            state.streams[ip] = max(0, state.streams.get(ip, 1) - 1)
-            STREAMS_ACTIVE.dec()
+            release_stream_slot()
             raise HTTPException(
                 status_code=429,
                 detail={"error": "rate_limited", "message": str(err)},
             ) from err
-        except PolzaRateLimited:
-            record_rate_limited(state, "stream")
-            record_stream_outcome("rate_limited")
-            state.streams[ip] = max(0, state.streams.get(ip, 1) - 1)
-            STREAMS_ACTIVE.dec()
-            raise HTTPException(status_code=429, detail={"error": "rate_limited"}) from None
+        except PolzaRetryableError as err:
+            state.total_errors += 1
+            record_stream_outcome("error")
+            release_stream_slot()
+            raise HTTPException(
+                status_code=502,
+                detail={"error": "upstream_error", "request_id": ctx.request_id},
+            ) from err
 
     async def event_stream() -> AsyncGenerator[str, None]:
         """Yield SSE frames while keeping metrics and cache in sync."""
@@ -277,10 +330,12 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
         corrected = ""
         pending_delta = first_delta
         try:
-            yield sse_event("meta", {"request_id": rid, "model_backend": state.adapter.name})
+            yield sse_event(
+                "meta", {"request_id": ctx.request_id, "model_backend": state.adapter.name}
+            )
             if stream_finished:
-                latency = int((time.time() - started) * 1000)
-                yield sse_event("done", {"request_id": rid, "latency_ms": latency})
+                latency = int((time.time() - ctx.started_at) * 1000)
+                yield sse_event("done", {"request_id": ctx.request_id, "latency_ms": latency})
                 state.total_streams_done += 1
                 record_stream_outcome("ok")
                 return
@@ -292,21 +347,21 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
                     else:
                         delta = await asyncio.wait_for(stream_iter.__anext__(), timeout=interval)
                     corrected += delta
-                    yield sse_event("delta", {"request_id": rid, "text": delta})
+                    yield sse_event("delta", {"request_id": ctx.request_id, "text": delta})
                 except TimeoutError:
                     yield ": ping\n\n"
                 except StopAsyncIteration:
-                    latency = int((time.time() - started) * 1000)
-                    yield sse_event("done", {"request_id": rid, "latency_ms": latency})
+                    latency = int((time.time() - ctx.started_at) * 1000)
+                    yield sse_event("done", {"request_id": ctx.request_id, "latency_ms": latency})
                     if corrected:
-                        state.cache.set(cache_key(text), corrected, state.adapter.name)
+                        state.cache.set(cache_key(ctx.text), corrected, state.adapter.name)
                     state.total_streams_done += 1
                     record_stream_outcome("ok")
                     break
         except GeminiKeyExhausted as err:
             yield sse_event(
                 "error",
-                {"request_id": rid, "type": "rate_limited", "message": str(err)},
+                {"request_id": ctx.request_id, "type": "rate_limited", "message": str(err)},
             )
             state.total_rate_limited += 1
             record_stream_outcome("rate_limited")
@@ -314,34 +369,53 @@ async def correct_stream(request: Request, state: AppState = Depends(get_state))
         except PolzaRateLimited:
             yield sse_event(
                 "error",
-                {"request_id": rid, "type": "rate_limited", "message": "rate_limited"},
+                {"request_id": ctx.request_id, "type": "rate_limited", "message": "rate_limited"},
             )
             state.total_rate_limited += 1
             record_stream_outcome("rate_limited")
             state.total_streams_error += 1
         except asyncio.CancelledError:
             yield sse_event(
-                "error", {"request_id": rid, "type": "cancelled", "message": "client_disconnected"}
+                "error",
+                {
+                    "request_id": ctx.request_id,
+                    "type": "cancelled",
+                    "message": "client_disconnected",
+                },
             )
             state.total_streams_cancelled += 1
             record_stream_outcome("cancelled")
         except Exception as err:  # noqa: BLE001
             yield sse_event(
-                "error", {"request_id": rid, "type": "server_error", "message": str(err)}
+                "error",
+                {"request_id": ctx.request_id, "type": "server_error", "message": str(err)},
             )
             state.total_streams_error += 1
             state.total_errors += 1
             record_stream_outcome("error")
         finally:
-            state.streams[ip] = max(0, state.streams.get(ip, 1) - 1)
-            STREAMS_ACTIVE.dec()
+            release_stream_slot()
 
-    headers = {
+    return StreamingResponse(event_stream(), media_type="text/event-stream", headers=headers)
+
+
+def stream_headers() -> dict[str, str]:
+    """Return headers that keep SSE delivery unbuffered."""
+    return {
         "Cache-Control": "no-cache",
         "X-Accel-Buffering": "no",
         "Connection": "keep-alive",
     }
-    return StreamingResponse(event_stream(), media_type="text/event-stream", headers=headers)
+
+
+async def cached_event_stream(
+    ctx: CorrectionRequestContext, corrected_text: str, backend: str
+) -> AsyncGenerator[str, None]:
+    """Replay a cached correction through the same SSE event contract."""
+    yield sse_event("meta", {"request_id": ctx.request_id, "model_backend": backend})
+    if corrected_text:
+        yield sse_event("delta", {"request_id": ctx.request_id, "text": corrected_text})
+    yield sse_event("done", {"request_id": ctx.request_id, "latency_ms": 0})
 
 
 def sse_event(event: str, data: dict[str, Any]) -> str:

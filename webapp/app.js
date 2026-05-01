@@ -160,22 +160,25 @@
     return trimmed.split(/\s+/u).length;
   }
 
-  function formatDate(value) {
+  function dateParts(value) {
     const d = new Date(value);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = String(d.getFullYear()).padStart(4, '0');
-    return `${day}.${month}.${year}`;
+    return {
+      day: String(d.getDate()).padStart(2, '0'),
+      month: String(d.getMonth() + 1).padStart(2, '0'),
+      year: String(d.getFullYear()).padStart(4, '0'),
+      hours: String(d.getHours()).padStart(2, '0'),
+      minutes: String(d.getMinutes()).padStart(2, '0'),
+    };
+  }
+
+  function formatDate(value) {
+    const parts = dateParts(value);
+    return `${parts.day}.${parts.month}.${parts.year}`;
   }
 
   function formatDateTime(value) {
-    const d = new Date(value);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = String(d.getFullYear()).padStart(4, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${day}.${month}.${year} ${hours}:${minutes}`;
+    const parts = dateParts(value);
+    return `${parts.day}.${parts.month}.${parts.year} ${parts.hours}:${parts.minutes}`;
   }
 
   function showToast(message, isError) {
@@ -304,54 +307,52 @@
     refs.btnFocus.classList.toggle('active', state.focusMode);
   }
 
-  function renderHistory() {
-    refs.historyList.innerHTML = '';
-    if (!state.history.length) {
-      const empty = document.createElement('div');
-      empty.className = 'history-empty';
-      empty.textContent = t('history.empty');
-      refs.historyList.appendChild(empty);
-      return;
-    }
-
+  function groupHistoryByDate(items) {
     const grouped = new Map();
-    state.history.forEach((item) => {
+    items.forEach((item) => {
       const day = formatDate(item.timestamp);
       if (!grouped.has(day)) {
         grouped.set(day, []);
       }
       grouped.get(day).push(item);
     });
+    return grouped;
+  }
+
+  function textElement(tagName, className, text) {
+    const element = document.createElement(tagName);
+    element.className = className;
+    element.textContent = text;
+    return element;
+  }
+
+  function createHistoryCard(item) {
+    const card = document.createElement('article');
+    card.className = 'history-card';
+
+    card.appendChild(textElement('div', 'history-time', formatDateTime(item.timestamp)));
+    card.appendChild(textElement('div', 'history-original', item.original.trim()));
+    card.appendChild(textElement('div', 'history-corrected', item.corrected.trim()));
+
+    return card;
+  }
+
+  function renderHistory() {
+    refs.historyList.replaceChildren();
+    if (!state.history.length) {
+      refs.historyList.appendChild(textElement('div', 'history-empty', t('history.empty')));
+      return;
+    }
+
+    const grouped = groupHistoryByDate(state.history);
 
     grouped.forEach((items, day) => {
       const block = document.createElement('section');
       block.className = 'history-block';
 
-      const dayLabel = document.createElement('h3');
-      dayLabel.className = 'history-day';
-      dayLabel.textContent = day;
-      block.appendChild(dayLabel);
-
+      block.appendChild(textElement('h3', 'history-day', day));
       items.forEach((item) => {
-        const card = document.createElement('article');
-        card.className = 'history-card';
-
-        const timestamp = document.createElement('div');
-        timestamp.className = 'history-time';
-        timestamp.textContent = formatDateTime(item.timestamp);
-        card.appendChild(timestamp);
-
-        const original = document.createElement('div');
-        original.className = 'history-original';
-        original.textContent = item.original.trim();
-        card.appendChild(original);
-
-        const corrected = document.createElement('div');
-        corrected.className = 'history-corrected';
-        corrected.textContent = item.corrected.trim();
-        card.appendChild(corrected);
-
-        block.appendChild(card);
+        block.appendChild(createHistoryCard(item));
       });
 
       refs.historyList.appendChild(block);
@@ -422,6 +423,70 @@
     }
   }
 
+  function createSseParser(onEvent) {
+    let currentEvent = 'message';
+    let currentData = '';
+
+    return {
+      pushLine(line) {
+        if (!line) {
+          this.flush();
+          currentEvent = 'message';
+          return;
+        }
+
+        if (line.startsWith(':')) {
+          return;
+        }
+        if (line.startsWith('event:')) {
+          currentEvent = line.slice(6).trim();
+          return;
+        }
+        if (line.startsWith('data:')) {
+          const chunk = line.slice(5).trim();
+          currentData = currentData ? `${currentData}\n${chunk}` : chunk;
+        }
+      },
+      flush() {
+        if (!currentData) {
+          return;
+        }
+        const payload = parseJson(currentData, {});
+        onEvent(currentEvent, payload);
+        currentEvent = 'message';
+        currentData = '';
+      },
+    };
+  }
+
+  async function readSseEvents(response, onEvent) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const parser = createSseParser(onEvent);
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      while (buffer.includes('\n')) {
+        const index = buffer.indexOf('\n');
+        const line = buffer.slice(0, index).trimEnd();
+        buffer = buffer.slice(index + 1);
+        parser.pushLine(line);
+      }
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      parser.pushLine(buffer.trimEnd());
+    }
+    parser.flush();
+  }
+
   async function submitCorrection() {
     const text = state.originalText.trim();
     if (!text || state.isStreaming) {
@@ -464,12 +529,6 @@
         throw new Error(extractErrorMessage(body, response.status));
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let currentEvent = 'message';
-      let currentData = '';
-
       const finish = () => {
         if (!state.isStreaming) {
           return;
@@ -480,39 +539,12 @@
         render();
       };
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        while (buffer.includes('\n')) {
-          const index = buffer.indexOf('\n');
-          const line = buffer.slice(0, index).trimEnd();
-          buffer = buffer.slice(index + 1);
-
-          if (!line) {
-            if (currentData) {
-              const payload = parseJson(currentData, {});
-              handleEvent(currentEvent, payload, finish);
-            }
-            currentEvent = 'message';
-            currentData = '';
-            continue;
-          }
-
-          if (line.startsWith('event:')) {
-            currentEvent = line.slice(6).trim();
-          } else if (line.startsWith('data:')) {
-            const chunk = line.slice(5).trim();
-            currentData = currentData ? `${currentData}\n${chunk}` : chunk;
-          }
-        }
-      }
+      await readSseEvents(response, (eventName, payload) => {
+        handleEvent(eventName, payload, finish);
+      });
 
       if (!doneReceived && state.isStreaming) {
-        addHistoryItem();
+        state.errorMessage = t('errors.stream');
       }
       state.isStreaming = false;
       render();
